@@ -30,6 +30,23 @@ router.get('/status', (req, res) => {
   res.json({ firstRun: count === 0, userCount: count });
 });
 
+// ── GET /api/auth/seed-defaults — ensure default users exist (only when table is empty) ──
+router.get('/seed-defaults', (req, res) => {
+  const count = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+  if (count > 0) return res.json({ ok: true, message: 'Users already exist' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const insertUser = db.prepare(`
+      INSERT INTO users (id, name, id_number, role, pin_hash, permissions, active) VALUES (?, ?, ?, ?, ?, ?, 1)
+    `);
+    insertUser.run('ADM-001', 'Andrew', 'ADM-001', 'admin', bcrypt.hashSync('1234', 10), 'all');
+    insertUser.run('ATT-001', 'Allan', 'ATT-001', 'attendant', bcrypt.hashSync('5678', 10), '[]');
+    return res.json({ ok: true, message: 'Default users created (Andrew PIN 1234, Allan PIN 5678)' });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // ── GET /api/auth/users — list active users for login dropdown ─────
 router.get('/users', (req, res) => {
   const users = db.prepare('SELECT id, name, id_number, role FROM users WHERE active = 1 ORDER BY name').all();

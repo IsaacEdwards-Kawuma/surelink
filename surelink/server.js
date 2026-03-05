@@ -14,13 +14,14 @@ const salesRouter = require('./routes/sales');
 const { runBackup } = require('./backup/run-backup');
 
 const app  = express();
-const PORT = process.env.PORT || 3000;
+// Render and similar hosts set PORT automatically; leave empty in .env to use their value or default 3000
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 // ── Security ────────────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false })); // CSP off for inline scripts in HTML
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().replace(/\/+$/, ''))
     : true,
   credentials: true
 }));

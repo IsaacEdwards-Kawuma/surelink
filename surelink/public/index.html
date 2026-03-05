@@ -565,7 +565,9 @@ input,select,textarea,button{font-family:inherit;}
 // ═══════════════════════════════════════════════════════════════════
 // API LAYER — all data goes through these functions
 // ═══════════════════════════════════════════════════════════════════
-const API = '/api';
+// When the app is on Vercel, set RENDER_APP_URL to your Render backend (e.g. https://surelink-xxxx.onrender.com)
+var RENDER_APP_URL = '';
+var API = (RENDER_APP_URL ? RENDER_APP_URL.replace(/\/$/, '') + '/api' : '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
 
@@ -664,32 +666,51 @@ async function checkConn(){
 // ═══════════════════════════════════════════════════════════════════
 
 async function checkFirstRun(){
+  var connEl=document.getElementById('conn-text');
   try{
     var status=await GET('/auth/status');
     if(status.firstRun){
-      // No users yet — show registration panel
+      // No users yet — try to seed default accounts (Andrew, Allan) then refresh
+      try{
+        await GET('/auth/seed-defaults');
+        status=await GET('/auth/status');
+      }catch(_){}
+    }
+    if(status.firstRun){
+      // Still no users — show registration panel
       document.getElementById('login-panel').style.display='none';
       document.getElementById('register-panel').style.display='block';
       setTimeout(()=>document.getElementById('reg-name').focus(),200);
     }else{
-      // Users exist — show normal login
+      // Users exist — show normal login and fill dropdown
       document.getElementById('login-panel').style.display='block';
       document.getElementById('register-panel').style.display='none';
       await loadLoginUsers();
       setTimeout(()=>document.getElementById('p0').focus(),200);
     }
   }catch(e){
-    document.getElementById('conn-text').textContent='Cannot connect — is the server running?';
+    document.getElementById('login-panel').style.display='block';
+    document.getElementById('register-panel').style.display='none';
+    if(connEl)connEl.textContent='Cannot connect. Open the app from your Render URL (e.g. https://your-app.onrender.com) — not from Vercel.';
+    document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
 }
 
 async function loadLoginUsers(){
+  var sel=document.getElementById('login-user');
+  var connEl=document.getElementById('conn-text');
   try{
     var users=await GET('/auth/users');
-    var sel=document.getElementById('login-user');
+    if(!users||users.length===0){
+      sel.innerHTML='<option value="">— No accounts — refresh or use Render URL —</option>';
+      if(connEl)connEl.textContent='No accounts loaded. If on Vercel, set RENDER_APP_URL to your Render backend and refresh.';
+      return;
+    }
     sel.innerHTML=users.map(u=>`<option value="${u.id}">${u.name}${u.id_number?' ['+u.id_number+']':''}</option>`).join('');
+    if(connEl)connEl.textContent='Server connected';
   }catch(e){
-    var el=document.getElementById('conn-text');if(el)el.textContent='Cannot reach server';
+    sel.innerHTML='<option value="">— Cannot load accounts —</option>';
+    if(connEl)connEl.textContent='Cannot reach server. Open the app from your Render URL (e.g. https://your-app.onrender.com) so the dropdown loads.';
   }
 }
 
