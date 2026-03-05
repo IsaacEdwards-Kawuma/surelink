@@ -204,8 +204,9 @@ input,select,textarea,button{font-family:inherit;}
     <div id="backend-url-box" style="display:none;margin-top:14px;padding:12px;background:#FEF3C7;border-radius:8px;text-align:left;font-size:12px">
       <strong>Not connected?</strong> If you opened this from Vercel, enter your <strong>Render backend URL</strong> below (e.g. <code style="font-size:11px">https://surelink-xxxx.onrender.com</code>), then click Connect.
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
-        <input type="text" id="backend-url-input" placeholder="https://your-app.onrender.com" style="flex:1;min-width:200px;padding:8px 10px;font-size:13px;border:1px solid #D1D5DB;border-radius:6px"/>
+        <input type="text" id="backend-url-input" placeholder="https://surelink-xxxx.onrender.com" style="flex:1;min-width:200px;padding:8px 10px;font-size:13px;border:1px solid #D1D5DB;border-radius:6px"/>
         <button type="button" class="btn btn-primary" style="padding:8px 14px" onclick="saveBackendUrl()">Connect</button>
+        <button type="button" class="btn" style="padding:8px 12px;background:#E5E7EB;color:#374151" onclick="clearBackendUrl()">Clear saved URL</button>
       </div>
       <div id="backend-url-msg" style="font-size:11px;color:#059669;margin-top:6px"></div>
     </div>
@@ -576,10 +577,18 @@ input,select,textarea,button{font-family:inherit;}
 // When the app is on Vercel, set RENDER_APP_URL to your Render backend (e.g. https://surelink-xxxx.onrender.com)
 // Or set it once in the app using the "Connect to backend" box when you see "Not connected"
 var RENDER_APP_URL = '';
+function normalizeApiBase(val){
+  if(!val||typeof val!=='string') return '';
+  var s = val.trim().replace(/\/+$/, '').replace(/\/api\/?$/, '');
+  var match = s.match(/^https:\/\/[^\/\s]+/);
+  return match ? match[0] : '';
+}
 function getApiBase(){
   var saved = localStorage.getItem('SURELINK_API_BASE');
-  if(saved) return saved.replace(/\/+$/, '').replace(/\/api\/?$/, '');
-  if(RENDER_APP_URL) return RENDER_APP_URL.replace(/\/$/, '');
+  var normalized = normalizeApiBase(saved);
+  if(saved && !normalized){ try{ localStorage.removeItem('SURELINK_API_BASE'); }catch(_){} return ''; }
+  if(normalized) return normalized;
+  if(RENDER_APP_URL) return normalizeApiBase(RENDER_APP_URL) || RENDER_APP_URL.replace(/\/$/, '');
   return '';
 }
 var API_BASE = getApiBase();
@@ -717,10 +726,11 @@ function saveBackendUrl(){
   var inp=document.getElementById('backend-url-input');
   var msg=document.getElementById('backend-url-msg');
   if(!inp||!inp.value.trim()){ if(msg)msg.textContent='Enter your Render URL first.'; return; }
-  var url=inp.value.trim().replace(/\/+$/, '').replace(/\/api\/?$/, '');
-  if(!url.startsWith('http')){ if(msg)msg.textContent='URL must start with https://'; return; }
+  var url=normalizeApiBase(inp.value.trim());
+  if(!url){ if(msg)msg.textContent='Use a valid URL, e.g. https://surelink-xxxx.onrender.com'; return; }
   try{ localStorage.setItem('SURELINK_API_BASE', url); if(msg)msg.textContent='Saved. Reloading...'; location.reload(); }catch(e){ if(msg)msg.textContent='Could not save.'; }
 }
+function clearBackendUrl(){ try{ localStorage.removeItem('SURELINK_API_BASE'); location.reload(); }catch(_){} }
 
 async function loadLoginUsers(){
   var sel=document.getElementById('login-user');
