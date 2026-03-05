@@ -1,0 +1,16 @@
+# Render Blueprint — tells Render to build from the surelink subfolder
+# Docs: https://docs.render.com/blueprint-spec
+# Start runs setup so the DB exists at runtime (build-created DB may not be in the deploy artifact).
+
+services:
+  - type: web
+    name: surelink
+    runtime: node
+    rootDirectory: surelink
+    buildCommand: npm install
+    startCommand: npm run setup && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true

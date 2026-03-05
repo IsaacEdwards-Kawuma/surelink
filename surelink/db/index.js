@@ -4,13 +4,27 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-const DB_PATH = process.env.DB_PATH || './db/surelink.db';
+// Use absolute path so it works regardless of process cwd (e.g. on Render)
+const defaultPath = path.join(__dirname, 'surelink.db');
+const DB_PATH = process.env.DB_PATH
+  ? path.isAbsolute(process.env.DB_PATH)
+    ? process.env.DB_PATH
+    : path.join(__dirname, '..', process.env.DB_PATH)
+  : defaultPath;
+
 const dir = path.dirname(DB_PATH);
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let db;
+try {
+  db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+} catch (err) {
+  console.error('❌ Database connection failed:', err.message);
+  console.error('   DB_PATH:', DB_PATH);
+  throw err;
+}
 
 // Helper: parse JSON safely
 db.parseSetting = (key) => {

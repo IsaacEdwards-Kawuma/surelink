@@ -6,7 +6,13 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
-const DB_PATH = process.env.DB_PATH || './db/surelink.db';
+// Match db/index.js path logic so setup and server use the same file
+const defaultPath = path.join(__dirname, 'surelink.db');
+const DB_PATH = process.env.DB_PATH
+  ? path.isAbsolute(process.env.DB_PATH)
+    ? process.env.DB_PATH
+    : path.join(__dirname, '..', process.env.DB_PATH)
+  : defaultPath;
 const dir = path.dirname(DB_PATH);
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 

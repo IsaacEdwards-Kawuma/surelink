@@ -50,7 +50,20 @@ app.get('*', (req, res) => {
 
 // ── Health check ────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '2.0.0', time: new Date().toISOString() });
+  let dbOk = false;
+  try {
+    const db = require('./db');
+    db.prepare('SELECT 1').get();
+    dbOk = true;
+  } catch (e) {
+    console.error('[health] DB check failed:', e.message);
+  }
+  res.status(dbOk ? 200 : 503).json({
+    status: dbOk ? 'ok' : 'degraded',
+    database: dbOk ? 'connected' : 'disconnected',
+    version: '2.0.0',
+    time: new Date().toISOString()
+  });
 });
 
 // ── Scheduled auto-backup (daily at 2am) ───────────────────────────
