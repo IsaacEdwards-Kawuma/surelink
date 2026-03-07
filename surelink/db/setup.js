@@ -215,8 +215,7 @@ if (userCount === 0) {
     INSERT INTO users (id, name, id_number, role, pin_hash, permissions, active) VALUES (?, ?, ?, ?, ?, ?, 1)
   `);
   insertUser.run('ADM-001', 'Andrew', 'ADM-001', 'admin', bcrypt.hashSync('1234', 10), 'all');
-  insertUser.run('ATT-001', 'Allan', 'ATT-001', 'attendant', bcrypt.hashSync('5678', 10), '[]');
-  console.log('   Default users: Andrew (Admin, PIN 1234), Allan (Attendant, PIN 5678) — change in Settings after first login.');
+  console.log('   Default admin: Andrew (PIN 1234) — add more users in Settings after first login.');
 }
 
 db.close();

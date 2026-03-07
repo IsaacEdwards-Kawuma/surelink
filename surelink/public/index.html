@@ -393,7 +393,7 @@ input,select,textarea,button{font-family:inherit;}
   <div style="max-width:660px;margin:0 auto">
   <div class="card">
     <div class="card-title" style="font-size:15px;margin-bottom:3px">🔍 Reconciliation</div>
-    <p style="font-size:11px;color:#6B7280;margin-bottom:18px">Paste Allan's sold codes — flags any not in the master register.</p>
+    <p style="font-size:11px;color:#6B7280;margin-bottom:18px">Paste sold codes — flags any not in the master register.</p>
     <div class="r2">
       <div class="fg"><label>Sale Date</label><input type="date" id="r-date"/></div>
       <div class="fg"><label>Attendant</label><select id="r-att"></select></div>
@@ -677,7 +677,7 @@ async function checkFirstRun(){
   try{
     var status=await GET('/auth/status');
     if(status.firstRun){
-      // No users yet — try to seed default accounts (Andrew, Allan) then refresh
+      // No users yet — try to seed default admin account (Andrew) then refresh
       try{
         await GET('/auth/seed-defaults');
         status=await GET('/auth/status');
@@ -1849,7 +1849,7 @@ function renderGuide(){
     </div>
     <div class="guide-section"><h3>🎫 Vouchers</h3>
       <div class="guide-step"><div class="guide-num">1</div><div class="guide-text">Go to <strong>Vouchers</strong> and enter quantities for each package type, then click Generate. Sequential codes are created and saved to the database.</div></div>
-      <div class="guide-step"><div class="guide-num">2</div><div class="guide-text">When entering daily revenue, paste the codes that Allan sold into the Voucher Codes field to mark them Sold automatically.</div></div>
+      <div class="guide-step"><div class="guide-num">2</div><div class="guide-text">When entering daily revenue, paste the sold voucher codes into the Voucher Codes field to mark them Sold automatically.</div></div>
     </div>
     <div class="guide-section"><h3>⚙️ Settings (Admin)</h3>
       <div class="guide-step"><div class="guide-num">1</div><div class="guide-text"><strong>Users</strong>: Add staff, set their ID number, role, PIN and exactly which tabs they can access.</div></div>

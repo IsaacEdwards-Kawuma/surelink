@@ -40,8 +40,7 @@ router.get('/seed-defaults', (req, res) => {
       INSERT INTO users (id, name, id_number, role, pin_hash, permissions, active) VALUES (?, ?, ?, ?, ?, ?, 1)
     `);
     insertUser.run('ADM-001', 'Andrew', 'ADM-001', 'admin', bcrypt.hashSync('1234', 10), 'all');
-    insertUser.run('ATT-001', 'Allan', 'ATT-001', 'attendant', bcrypt.hashSync('5678', 10), '[]');
-    return res.json({ ok: true, message: 'Default users created (Andrew PIN 1234, Allan PIN 5678)' });
+    return res.json({ ok: true, message: 'Default admin created (Andrew, PIN 1234)' });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

@@ -61,9 +61,8 @@ JWT_SECRET=replace_this_with_50_random_characters_like_xK9mP2qR7vN3wL8jT5
 ```bash
 npm run setup
 ```
-Creates `db/surelink.db` with all tables and default users:
+Creates `db/surelink.db` with all tables and a default admin user:
 - **Andrew** (Admin) — PIN: 1234
-- **Allan** (Attendant) — PIN: 5678
 
 ### Step 7: Start the server
 ```bash
@@ -82,7 +81,7 @@ Go to **http://localhost:3000** in your browser. Log in with Andrew / PIN 1234.
 
 ## OPTION B — Host online (recommended for access from multiple devices)
 
-This lets you and Allan both access it from any phone or tablet.
+This lets you and your team access it from any phone or tablet.
 
 ### Cheapest option: Render.com (free tier available)
 
@@ -107,8 +106,7 @@ This lets you and Allan both access it from any phone or tablet.
      - `NODE_ENV` = production
 
 4. Render gives you a URL like `https://surelink-xyz.onrender.com`
-   - Share this with Allan for his phone
-   - Bookmark it on yours
+   - Share the URL with your team; bookmark it on your devices
 
 ### Alternative: Railway.app
 Similar process — also has a free tier.
@@ -142,12 +140,11 @@ Then point your domain to it using Nginx as a reverse proxy.
 
 ## Default Login Credentials
 
-| User   | ID Number | Role      | PIN  |
-|--------|-----------|-----------|------|
-| Andrew | ADM-001   | Admin     | 1234 |
-| Allan  | ATT-001   | Attendant | 5678 |
+| User   | ID Number | Role  | PIN  |
+|--------|-----------|-------|------|
+| Andrew | ADM-001   | Admin | 1234 |
 
-**Change these immediately after first login** in Settings → Users.
+**Change the PIN and add more users** after first login in Settings → Users.
 
 ---
 
