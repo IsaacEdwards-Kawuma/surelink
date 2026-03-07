@@ -811,13 +811,16 @@ async function doLogout(){
 // ═══════════════════════════════════════════════════════════════════
 async function loadAllData(){
   try{
-    var [sales,vouchers,expenses,assets,settings,users,log]=await Promise.all([
+    var isAdmin = CURRENT_USER && CURRENT_USER.permissions === 'all';
+    var fetches = [
       GET('/sales'), GET('/vouchers'), GET('/expenses'),
-      GET('/assets'), GET('/settings'), GET('/users'), GET('/admin-log?limit=200')
-    ]);
-    SALES=sales||[]; VOUCHERS=vouchers||[]; EXPENSES=expenses||[];
-    ASSETS=assets||[]; SETTINGS=Object.assign(SETTINGS,settings||{});
-    USERS=users||[]; ADMIN_LOG=log||[];
+      GET('/assets'), GET('/settings')
+    ];
+    if (isAdmin) fetches.push(GET('/users'), GET('/admin-log?limit=200'));
+    var results = await Promise.all(fetches);
+    SALES=results[0]||[]; VOUCHERS=results[1]||[]; EXPENSES=results[2]||[];
+    ASSETS=results[3]||[]; SETTINGS=Object.assign(SETTINGS,results[4]||{});
+    USERS=isAdmin?(results[5]||[]):[]; ADMIN_LOG=isAdmin?(results[6]||[]):[];
   }catch(e){
     console.error('Load error:',e);
     toast('⚠️ Could not load some data: '+e.message,'error');
