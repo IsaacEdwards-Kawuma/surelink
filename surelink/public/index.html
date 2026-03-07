@@ -800,7 +800,7 @@ async function checkFirstRun(){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
     if(connDot)connDot.classList.add('off');
-    if(connEl)connEl.textContent='Cannot connect. Using: '+API_BASE+'. On free tier wait 30–60s for wake-up, then tap Retry.';
+    if(connEl)connEl.textContent='Cannot connect. Tap Retry.';
     if(retryBtn)retryBtn.style.display='inline-block';
     document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
