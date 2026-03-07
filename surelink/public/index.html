@@ -158,21 +158,15 @@ img{max-width:100%;height:auto;}
 .alert-amber{background:#FEF3C7;color:#92400E;border-left:4px solid #C9A84C;}
 .alert-blue{background:#EFF6FF;color:#1E3A5F;border-left:4px solid #1E3A5F;}
 
-/* SETTINGS TABS — collapsible on small screens */
+/* SETTINGS TABS — always visible (Users, Revenue, Admin Log, Packages, etc.) */
 .stab-toggle-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
-.stab-toggle-btn{display:none;background:#1E3A5F;color:#fff;border:none;width:44px;height:44px;border-radius:10px;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;align-items:center;justify-content:center;transition:background .2s,transform .2s;}
-.stab-toggle-btn:hover{background:#2d4a73;}
-.stab-toggle-btn:active{transform:scale(.96);}
+.stab-toggle-btn{display:none;}
 .stab-bar{display:flex;flex:1;gap:4px;flex-wrap:wrap;min-width:0;}
 .stab{padding:7px 13px;border-radius:7px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:#EEF2F7;color:#374151;transition:all .15s;}
 .stab.active{background:#1E3A5F;color:#fff;}
 @media(max-width:768px){
-  .stab-toggle-btn{display:flex;}
-  .stab-bar{flex-basis:100%;max-height:0;overflow:hidden;opacity:0;visibility:hidden;transition:max-height .35s ease,opacity .25s ease,visibility .25s;flex-direction:column;gap:2px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;margin-top:4px;box-shadow:0 2px 8px rgba(0,0,0,.06);}
-  .stab-toggle-wrap.stab-open .stab-bar{max-height:80vh;opacity:1;visibility:visible;padding:6px;}
-  .stab-toggle-wrap.stab-open .stab{width:100%;text-align:left;padding:12px 14px;border-radius:8px;margin-bottom:0;font-size:12px;}
-  .stab-toggle-wrap.stab-open .stab:hover{background:#EEF2F7;}
-  .stab-toggle-wrap.stab-open .stab.active:hover{background:#1E3A5F;}
+  .stab-bar{flex-basis:100%;flex-direction:row;flex-wrap:wrap;gap:6px;}
+  .stab{padding:10px 12px;font-size:11px;}
 }
 
 /* BAR CHART */
@@ -1689,7 +1683,10 @@ function closeStab(){
 
 function showStab(id,btn){
   document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('[id^="stab-"]').forEach(p=>p.style.display='none');
+  document.querySelectorAll('[id^="stab-"]').forEach(p=>{
+    if(p.id==='stab-toggle-wrap')return;  /* do not hide the tab bar wrapper */
+    p.style.display='none';
+  });
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
   if(window.innerWidth<=768)closeStab();
   renderSettings();
