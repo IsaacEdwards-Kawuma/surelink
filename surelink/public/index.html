@@ -281,6 +281,7 @@ img{max-width:100%;height:auto;}
     <button class="btn btn-primary btn-full" style="padding:12px;font-size:14px" onclick="doLogin()" id="login-btn">Sign In →</button>
     <div id="conn-status" style="font-size:10px;color:#9CA3AF;margin-top:12px">
       <span class="conn-dot" id="conn-dot"></span><span id="conn-text">Connecting...</span>
+      <button type="button" id="conn-retry" onclick="checkFirstRun()" style="display:none;margin-left:10px;padding:4px 10px;font-size:11px;font-weight:700;background:#1E3A5F;color:#fff;border:none;border-radius:6px;cursor:pointer">Retry</button>
     </div>
   </div>
 
@@ -769,6 +770,10 @@ async function checkConn(){
 
 async function checkFirstRun(){
   var connEl=document.getElementById('conn-text');
+  var retryBtn=document.getElementById('conn-retry');
+  var connDot=document.getElementById('conn-dot');
+  if(connEl)connEl.textContent='Connecting...';
+  if(retryBtn)retryBtn.style.display='none';
   try{
     var status=await GET('/auth/status');
     if(status.firstRun){
@@ -794,7 +799,9 @@ async function checkFirstRun(){
   }catch(e){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
-    if(connEl)connEl.textContent='Cannot connect to server. Check that API_BASE in the code matches your Render URL (e.g. https://your-app.onrender.com). On free tier, wait 30–60s for the service to wake up and try again.';
+    if(connDot)connDot.classList.add('off');
+    if(connEl)connEl.textContent='Cannot connect. Using: '+API_BASE+'. On free tier wait 30–60s for wake-up, then tap Retry.';
+    if(retryBtn)retryBtn.style.display='inline-block';
     document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
 }
@@ -811,6 +818,7 @@ async function loadLoginUsers(){
     }
     sel.innerHTML=users.map(u=>`<option value="${u.id}">${u.name}${u.id_number?' ['+u.id_number+']':''}</option>`).join('');
     if(connEl)connEl.textContent='Server connected';
+    var retryBtn=document.getElementById('conn-retry');if(retryBtn)retryBtn.style.display='none';
   }catch(e){
     sel.innerHTML='<option value="">— Cannot load accounts —</option>';
     if(connEl)connEl.textContent='Cannot reach server. Open the app from your Render URL (e.g. https://your-app.onrender.com) so the dropdown loads.';
