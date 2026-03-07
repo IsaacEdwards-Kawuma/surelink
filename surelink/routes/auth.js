@@ -47,52 +47,62 @@ router.get('/users', (req, res) => {
 // First run: anyone can create the initial admin account
 // After that: requires admin JWT
 router.post('/register', (req, res) => {
-  const { name, idNumber, role, pin, confirmPin, permissions, phone, businessName } = req.body;
-  const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  const isFirstRun = userCount === 0;
-
-  if (!isFirstRun) {
-    const auth = req.headers.authorization;
-    if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Admin login required to create users' });
+  try {
+    const { name, idNumber, role, pin, confirmPin, permissions, phone, businessName } = req.body;
+    let userCount;
     try {
-      const decoded = jwt.verify(auth.slice(7), SECRET);
-      if (decoded.permissions !== 'all') return res.status(403).json({ error: 'Only admins can create accounts' });
-      req.user = decoded;
-    } catch { return res.status(401).json({ error: 'Session expired' }); }
+      userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+    } catch (dbErr) {
+      return res.status(503).json({ error: 'Database not ready. If deployed on Render, ensure Build Command includes: npm run setup' });
+    }
+    const isFirstRun = userCount === 0;
+
+    if (!isFirstRun) {
+      const auth = req.headers.authorization;
+      if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Admin login required to create users' });
+      try {
+        const decoded = jwt.verify(auth.slice(7), SECRET);
+        if (decoded.permissions !== 'all') return res.status(403).json({ error: 'Only admins can create accounts' });
+        req.user = decoded;
+      } catch { return res.status(401).json({ error: 'Session expired' }); }
+    }
+
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Full name is required' });
+    if (!pin || !/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+    if (confirmPin !== undefined && String(pin) !== String(confirmPin)) return res.status(400).json({ error: 'PINs do not match' });
+
+    const existing = db.prepare('SELECT id FROM users WHERE LOWER(name) = LOWER(?)').get(name.trim());
+    if (existing) return res.status(409).json({ error: 'A user with that name already exists' });
+
+    const id = uid();
+    const pinHash = bcrypt.hashSync(String(pin), 10);
+    const userRole = isFirstRun ? 'admin' : (role || 'attendant');
+    const userPerms = isFirstRun ? 'all' : JSON.stringify(permissions || []);
+
+    db.prepare('INSERT INTO users (id, name, id_number, role, pin_hash, phone, permissions, active) VALUES (?,?,?,?,?,?,?,1)')
+      .run(id, name.trim(), idNumber || '', userRole, pinHash, phone || '', userPerms);
+
+    if (isFirstRun && businessName && businessName.trim()) {
+      const biz = db.parseSetting('business') || {};
+      biz.name = businessName.trim();
+      biz.owner = name.trim();
+      db.saveSetting('business', biz, name.trim());
+    }
+
+    const logBy = isFirstRun ? name.trim() : (req.user?.name || 'admin');
+    db.logAction(logBy, isFirstRun ? 'Admin Account Created' : 'User Created', `${name.trim()} | ${userRole}`, '');
+
+    if (isFirstRun) {
+      const payload = { id, name: name.trim(), idNumber: idNumber || '', role: 'admin', permissions: 'all' };
+      const token = jwt.sign(payload, SECRET, { expiresIn: TOKEN_EXPIRY });
+      return res.status(201).json({ token, user: payload });
+    }
+
+    res.status(201).json({ id, name: name.trim(), role: userRole });
+  } catch (e) {
+    console.error('[register]', e.message);
+    return res.status(500).json({ error: e.message || 'Registration failed' });
   }
-
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Full name is required' });
-  if (!pin || !/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
-  if (confirmPin !== undefined && String(pin) !== String(confirmPin)) return res.status(400).json({ error: 'PINs do not match' });
-
-  const existing = db.prepare('SELECT id FROM users WHERE LOWER(name) = LOWER(?)').get(name.trim());
-  if (existing) return res.status(409).json({ error: 'A user with that name already exists' });
-
-  const id = uid();
-  const pinHash = bcrypt.hashSync(String(pin), 10);
-  const userRole = isFirstRun ? 'admin' : (role || 'attendant');
-  const userPerms = isFirstRun ? 'all' : JSON.stringify(permissions || []);
-
-  db.prepare('INSERT INTO users (id, name, id_number, role, pin_hash, phone, permissions, active) VALUES (?,?,?,?,?,?,?,1)')
-    .run(id, name.trim(), idNumber || '', userRole, pinHash, phone || '', userPerms);
-
-  if (isFirstRun && businessName && businessName.trim()) {
-    const biz = db.parseSetting('business') || {};
-    biz.name = businessName.trim();
-    biz.owner = name.trim();
-    db.saveSetting('business', biz, name.trim());
-  }
-
-  const logBy = isFirstRun ? name.trim() : (req.user?.name || 'admin');
-  db.logAction(logBy, isFirstRun ? 'Admin Account Created' : 'User Created', `${name.trim()} | ${userRole}`, '');
-
-  if (isFirstRun) {
-    const payload = { id, name: name.trim(), idNumber: idNumber || '', role: 'admin', permissions: 'all' };
-    const token = jwt.sign(payload, SECRET, { expiresIn: TOKEN_EXPIRY });
-    return res.status(201).json({ token, user: payload });
-  }
-
-  res.status(201).json({ id, name: name.trim(), role: userRole });
 });
 
 // ── POST /api/auth/login ───────────────────────────────────────────
