@@ -47,11 +47,11 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Health check (before catch-all so it is reachable) ────────────────
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
   let dbOk = false;
   try {
     const db = require('./db');
-    db.prepare('SELECT 1').get();
+    await db.get('SELECT 1');
     dbOk = true;
   } catch (e) {
     console.error('[health] DB check failed:', e.message);

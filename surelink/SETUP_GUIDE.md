@@ -51,17 +51,19 @@ This downloads all required libraries (~30 seconds).
 ```bash
 cp .env.example .env
 ```
-Open `.env` in Notepad/any editor and change:
+Open `.env` in Notepad/any editor and set:
 ```
 JWT_SECRET=replace_this_with_50_random_characters_like_xK9mP2qR7vN3wL8jT5
+DATABASE_URL=postgresql://user:password@host:5432/dbname
 ```
-(Make up any long random string — this keeps logins secure)
+- **JWT_SECRET:** any long random string (keeps logins secure).
+- **DATABASE_URL:** from a free PostgreSQL host (e.g. [Neon](https://neon.tech), [Supabase](https://supabase.com), or Render Postgres).
 
 ### Step 6: Set up the database
 ```bash
 npm run setup
 ```
-Creates `db/surelink.db` with all tables. No default users — you create the first admin when you open the app.
+Creates all tables in your PostgreSQL database. No default users — you create the first admin when you open the app.
 
 ### Step 7: Start the server
 ```bash
@@ -170,7 +172,7 @@ Backups older than 30 days are automatically deleted.
 
 ## Database Location
 
-Your data lives in `db/surelink.db` — a single SQLite file.
+Your data lives in PostgreSQL (set `DATABASE_URL` in `.env`). Free tiers: Render Postgres, Neon, Supabase.
 - **Back this file up regularly** (the auto-backup also exports everything to JSON)
 - To restore from backup: use the JSON file or copy a backup `.db` file
 
@@ -213,7 +215,7 @@ npm run setup
 | Component | Technology |
 |-----------|-----------|
 | Backend   | Node.js + Express.js |
-| Database  | SQLite (via better-sqlite3) |
+| Database  | PostgreSQL (via pg) |
 | Auth      | JWT tokens + bcrypt PIN hashing |
 | Frontend  | Vanilla HTML/CSS/JavaScript (single file) |
 | Backup    | JSON export + node-cron scheduler |

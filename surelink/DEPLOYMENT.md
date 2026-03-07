@@ -51,16 +51,25 @@ In the same Web Service, open **Environment** and add:
 | `NODE_ENV` | `production` | Yes |
 | `PORT` | `3000` (or leave blank; Render sets `PORT` automatically) | Optional |
 | `JWT_SECRET` | A long random string (50+ characters). Example: `xK9mP2qR7vN3wL8jT5sL1nM4bV6cX8zQ0aF2hJ7kD9gY3wE5rT` | **Yes** |
-| `DB_PATH` | `./db/surelink.db` | Optional (default) |
+| `DATABASE_URL` | PostgreSQL connection string (from your DB host) | **Yes** |
 | `BACKUP_DIR` | `./backup/files` | Optional |
 | `BACKUP_KEEP_DAYS` | `30` | Optional |
 | `ADMIN_EMAIL` | Your email (e.g. `kasacpride@gmail.com`) | Optional |
 | `ALLOWED_ORIGINS` | Leave **empty** to allow all origins, or set your Vercel URL later, e.g. `https://surelink.vercel.app` | Optional (needed if you use Vercel frontend) |
 
+**Get a free PostgreSQL database (pick one):**
+
+- **Render:** Dashboard → New → PostgreSQL. After creation, copy the **Internal Database URL** (or External) into `DATABASE_URL`.
+- **Neon:** [neon.tech](https://neon.tech) → Create project → copy connection string.
+- **Supabase:** [supabase.com](https://supabase.com) → New project → Settings → Database → copy connection string (use Session mode, URI).
+
+Then run `npm run setup` once (via Start Command or manually) to create tables.
+
 **Minimum for first deploy:**
 
 - `NODE_ENV` = `production`
 - `JWT_SECRET` = (your long random secret)
+- `DATABASE_URL` = (your PostgreSQL connection string)
 
 Generate a secret (run locally once):
 
@@ -84,7 +93,7 @@ Use the output as `JWT_SECRET`.
 ## Important: SQLite on Render free tier
 
 - Render’s free tier has **ephemeral disk**: the filesystem is reset on each deploy or when the service sleeps.
-- So `db/surelink.db` and `backup/files/` will **not** persist across restarts.
+- So `backup/files/` on disk will **not** persist across restarts. Data is stored in PostgreSQL (persistent).
 - For a **persistent** database you’d need:
   - Render **persistent disk** (paid), or  
   - A hosted DB (e.g. PostgreSQL on Render) and code changes to use it instead of SQLite.
@@ -174,7 +183,7 @@ So it only works when the page is served from the same origin as the API. For Ve
 | `NODE_ENV` | `production` |
 | `PORT` | Omit (Render sets it) or `3000` |
 | `JWT_SECRET` | 50+ character random string |
-| `DB_PATH` | `./db/surelink.db` |
+| `DATABASE_URL` | Your PostgreSQL URL (e.g. from Render Postgres, Neon, Supabase) |
 | `BACKUP_DIR` | `./backup/files` |
 | `BACKUP_KEEP_DAYS` | `30` |
 | `ADMIN_EMAIL` | `kasacpride@gmail.com` |

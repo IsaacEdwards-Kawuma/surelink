@@ -25,35 +25,36 @@ function requireAdmin(req, res, next) {
 }
 
 // ── GET /api/auth/status — first-run detection ─────────────────────
-router.get('/status', (req, res) => {
-  const count = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+router.get('/status', async (req, res) => {
+  const row = await db.get('SELECT COUNT(*) as c FROM users');
+  const count = parseInt(row?.c || 0, 10);
   res.json({ firstRun: count === 0, userCount: count });
 });
 
-// ── GET /api/auth/seed-defaults — no default users; first admin is created via registration ──
-router.get('/seed-defaults', (req, res) => {
-  const count = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+// ── GET /api/auth/seed-defaults ────────────────────────────────────
+router.get('/seed-defaults', async (req, res) => {
+  const row = await db.get('SELECT COUNT(*) as c FROM users');
+  const count = parseInt(row?.c || 0, 10);
   if (count > 0) return res.json({ ok: true, message: 'Users already exist' });
   return res.json({ ok: true, message: 'No default users — create your first admin on the registration screen' });
 });
 
 // ── GET /api/auth/users — list active users for login dropdown ─────
-router.get('/users', (req, res) => {
-  const users = db.prepare('SELECT id, name, id_number, role FROM users WHERE active = 1 ORDER BY name').all();
+router.get('/users', async (req, res) => {
+  const users = await db.all('SELECT id, name, id_number, role FROM users WHERE active = 1 ORDER BY name');
   res.json(users);
 });
 
 // ── POST /api/auth/register ────────────────────────────────────────
-// First run: anyone can create the initial admin account
-// After that: requires admin JWT
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { name, idNumber, role, pin, confirmPin, permissions, phone, businessName } = req.body;
     let userCount;
     try {
-      userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+      const row = await db.get('SELECT COUNT(*) as c FROM users');
+      userCount = parseInt(row?.c || 0, 10);
     } catch (dbErr) {
-      return res.status(503).json({ error: 'Database not ready. If deployed on Render, ensure Build Command includes: npm run setup' });
+      return res.status(503).json({ error: 'Database not ready. Set DATABASE_URL and run: npm run setup' });
     }
     const isFirstRun = userCount === 0;
 
@@ -71,7 +72,7 @@ router.post('/register', (req, res) => {
     if (!pin || !/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
     if (confirmPin !== undefined && String(pin) !== String(confirmPin)) return res.status(400).json({ error: 'PINs do not match' });
 
-    const existing = db.prepare('SELECT id FROM users WHERE LOWER(name) = LOWER(?)').get(name.trim());
+    const existing = await db.get('SELECT id FROM users WHERE LOWER(name) = LOWER(?)', name.trim());
     if (existing) return res.status(409).json({ error: 'A user with that name already exists' });
 
     const id = uid();
@@ -79,18 +80,18 @@ router.post('/register', (req, res) => {
     const userRole = isFirstRun ? 'admin' : (role || 'attendant');
     const userPerms = isFirstRun ? 'all' : JSON.stringify(permissions || []);
 
-    db.prepare('INSERT INTO users (id, name, id_number, role, pin_hash, phone, permissions, active) VALUES (?,?,?,?,?,?,?,1)')
-      .run(id, name.trim(), idNumber || '', userRole, pinHash, phone || '', userPerms);
+    await db.run('INSERT INTO users (id, name, id_number, role, pin_hash, phone, permissions, active) VALUES (?,?,?,?,?,?,?,1)',
+      id, name.trim(), idNumber || '', userRole, pinHash, phone || '', userPerms);
 
     if (isFirstRun && businessName && businessName.trim()) {
-      const biz = db.parseSetting('business') || {};
+      const biz = (await db.parseSetting('business')) || {};
       biz.name = businessName.trim();
       biz.owner = name.trim();
-      db.saveSetting('business', biz, name.trim());
+      await db.saveSetting('business', biz, name.trim());
     }
 
     const logBy = isFirstRun ? name.trim() : (req.user?.name || 'admin');
-    db.logAction(logBy, isFirstRun ? 'Admin Account Created' : 'User Created', `${name.trim()} | ${userRole}`, '');
+    await db.logAction(logBy, isFirstRun ? 'Admin Account Created' : 'User Created', `${name.trim()} | ${userRole}`, '');
 
     if (isFirstRun) {
       const payload = { id, name: name.trim(), idNumber: idNumber || '', role: 'admin', permissions: 'all' };
@@ -106,11 +107,11 @@ router.post('/register', (req, res) => {
 });
 
 // ── POST /api/auth/login ───────────────────────────────────────────
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { userId, pin } = req.body;
   if (!userId || !pin) return res.status(400).json({ error: 'User and PIN required' });
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(userId);
+  const user = await db.get('SELECT * FROM users WHERE id = ? AND active = 1', userId);
   if (!user) return res.status(401).json({ error: 'User not found or inactive' });
 
   if (!bcrypt.compareSync(String(pin), user.pin_hash)) return res.status(401).json({ error: 'Wrong PIN — try again' });
@@ -120,13 +121,13 @@ router.post('/login', (req, res) => {
 
   const payload = { id: user.id, name: user.name, idNumber: user.id_number, role: user.role, permissions: perms };
   const token = jwt.sign(payload, SECRET, { expiresIn: TOKEN_EXPIRY });
-  db.logAction(user.name, 'Login', 'Signed in', req.ip);
+  await db.logAction(user.name, 'Login', 'Signed in', req.ip);
   res.json({ token, user: payload });
 });
 
 // ── POST /api/auth/logout ──────────────────────────────────────────
-router.post('/logout', requireAuth, (req, res) => {
-  db.logAction(req.user.name, 'Logout', 'Signed out', req.ip);
+router.post('/logout', requireAuth, async (req, res) => {
+  await db.logAction(req.user.name, 'Logout', 'Signed out', req.ip);
   res.json({ ok: true });
 });
 
