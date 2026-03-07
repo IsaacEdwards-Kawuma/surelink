@@ -158,15 +158,21 @@ img{max-width:100%;height:auto;}
 .alert-amber{background:#FEF3C7;color:#92400E;border-left:4px solid #C9A84C;}
 .alert-blue{background:#EFF6FF;color:#1E3A5F;border-left:4px solid #1E3A5F;}
 
-/* SETTINGS TABS — always visible (Users, Revenue, Admin Log, Packages, etc.) */
-.stab-toggle-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
-.stab-toggle-btn{display:none;}
-.stab-bar{display:flex;flex:1;gap:4px;flex-wrap:wrap;min-width:0;}
-.stab{padding:7px 13px;border-radius:7px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:#EEF2F7;color:#374151;transition:all .15s;}
+/* SETTINGS TABS — collapsible slide bar (Business, Users, Revenue, Packages, etc.) */
+.stab-toggle-wrap{display:flex;flex-direction:column;gap:0;margin-bottom:18px;border:1px solid #E5E7EB;border-radius:10px;background:#F9FAFB;overflow:hidden;}
+.stab-toggle-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:#1E3A5F;color:#fff;border:none;border-radius:0;cursor:pointer;font-size:12px;font-weight:700;text-align:left;transition:background .2s;}
+.stab-toggle-btn:hover{background:#2d4a73;}
+.stab-toggle-btn .stab-chevron{transition:transform .25s ease;}
+.stab-toggle-wrap.stab-open .stab-toggle-btn .stab-chevron{transform:rotate(180deg);}
+.stab-bar{display:flex;flex-wrap:wrap;gap:6px;max-height:0;overflow:hidden;transition:max-height .35s ease;padding:0 10px;background:transparent;}
+.stab-toggle-wrap.stab-open .stab-bar{max-height:320px;padding:10px;}
+.stab{padding:8px 12px;border-radius:7px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:#EEF2F7;color:#374151;transition:all .15s;}
+.stab:hover{background:#E5E7EB;}
 .stab.active{background:#1E3A5F;color:#fff;}
 @media(max-width:768px){
-  .stab-bar{flex-basis:100%;flex-direction:row;flex-wrap:wrap;gap:6px;}
-  .stab{padding:10px 12px;font-size:11px;}
+  .stab-bar{flex-direction:column;}
+  .stab-toggle-wrap.stab-open .stab-bar{max-height:480px;}
+  .stab{width:100%;text-align:left;padding:11px 14px;}
 }
 
 /* BAR CHART */
@@ -556,8 +562,11 @@ img{max-width:100%;height:auto;}
       <div class="card-title" style="margin-bottom:0">⚙️ Settings</div>
       <button class="btn btn-sm btn-gray" onclick="downloadBackup()">⬇️ Download Backup</button>
     </div>
-    <div class="stab-toggle-wrap" id="stab-toggle-wrap">
-      <button type="button" class="stab-toggle-btn" id="stab-toggle-btn" onclick="toggleStab()" aria-label="Settings submenu" aria-expanded="false">⚙️</button>
+    <div class="stab-toggle-wrap stab-open" id="stab-toggle-wrap">
+      <button type="button" class="stab-toggle-btn" id="stab-toggle-btn" onclick="toggleStab()" aria-label="Settings sections" aria-expanded="true">
+        <span>Settings sections</span>
+        <span class="stab-chevron" aria-hidden="true">▼</span>
+      </button>
       <div class="stab-bar">
         <button class="stab active" onclick="showStab('biz',this)">🏢 Business</button>
         <button class="stab" onclick="showStab('users',this)">👤 Users</button>
