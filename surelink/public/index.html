@@ -33,12 +33,22 @@ img{max-width:100%;height:auto;}
 .conn-dot.off{background:#ef4444;}
 .logout-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:600;}
 .logout-btn:hover{background:rgba(255,255,255,.2);}
-#nav{display:flex;gap:2px;padding:5px 12px 0;overflow-x:auto;scrollbar-width:none;}
+/* Nav: icon toggles to horizontal tabs */
+.nav-toggle-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:5px 12px 8px;}
+.nav-toggle-btn{display:none;background:rgba(255,255,255,.2);border:none;color:#fff;width:44px;height:44px;border-radius:10px;cursor:pointer;font-size:22px;line-height:1;flex-shrink:0;transition:background .2s;}
+.nav-toggle-btn:hover{background:rgba(255,255,255,.3);}
+.nav-toggle-btn:active{background:rgba(255,255,255,.4);}
+#nav{display:flex;flex:1;gap:2px;padding:0;overflow-x:auto;scrollbar-width:none;min-width:0;}
 #nav::-webkit-scrollbar{display:none;}
 .nav-btn{padding:8px 13px;border:none;border-radius:7px 7px 0 0;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;transition:all .15s;background:rgba(255,255,255,.1);color:#fff;}
 .nav-btn.active{background:#C9A84C;color:#1E3A5F;}
 .nav-btn.admin-tab{background:rgba(201,168,76,.15);color:#C9A84C;}
 .nav-btn.admin-tab.active{background:#C9A84C;color:#1E3A5F;}
+@media(max-width:768px){
+  .nav-toggle-btn{display:flex;align-items:center;justify-content:center;}
+  #nav{flex-basis:100%;order:10;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;}
+  .nav-toggle-wrap.nav-open #nav{max-height:80px;opacity:1;}
+}
 
 /* PAGES */
 .page{display:none;padding:16px 14px 60px;max-width:1160px;margin:0 auto;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(60px,env(safe-area-inset-bottom));}
@@ -136,10 +146,18 @@ img{max-width:100%;height:auto;}
 .alert-amber{background:#FEF3C7;color:#92400E;border-left:4px solid #C9A84C;}
 .alert-blue{background:#EFF6FF;color:#1E3A5F;border-left:4px solid #1E3A5F;}
 
-/* SETTINGS TABS */
-.stab-bar{display:flex;gap:4px;margin-bottom:18px;flex-wrap:wrap;}
+/* SETTINGS TABS — icon expands to horizontal tabs */
+.stab-toggle-wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.stab-toggle-btn{display:none;background:#1E3A5F;color:#fff;border:none;width:44px;height:44px;border-radius:10px;cursor:pointer;font-size:20px;line-height:1;flex-shrink:0;}
+.stab-toggle-btn:hover{opacity:.9;}
+.stab-bar{display:flex;flex:1;gap:4px;flex-wrap:wrap;min-width:0;}
 .stab{padding:7px 13px;border-radius:7px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:#EEF2F7;color:#374151;transition:all .15s;}
 .stab.active{background:#1E3A5F;color:#fff;}
+@media(max-width:768px){
+  .stab-toggle-btn{display:flex;align-items:center;justify-content:center;}
+  .stab-bar{flex-basis:100%;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;}
+  .stab-toggle-wrap.stab-open .stab-bar{max-height:160px;opacity:1;}
+}
 
 /* BAR CHART */
 .bar-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
@@ -321,7 +339,10 @@ img{max-width:100%;height:auto;}
       <button class="logout-btn" onclick="doLogout()">Sign Out</button>
     </div>
   </div>
-  <div id="nav"></div>
+  <div class="nav-toggle-wrap" id="nav-toggle-wrap">
+    <button type="button" class="nav-toggle-btn" id="nav-toggle-btn" onclick="toggleNav()" aria-label="Open menu">☰</button>
+    <div id="nav"></div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -522,15 +543,18 @@ img{max-width:100%;height:auto;}
       <div class="card-title" style="margin-bottom:0">⚙️ Settings</div>
       <button class="btn btn-sm btn-gray" onclick="downloadBackup()">⬇️ Download Backup</button>
     </div>
-    <div class="stab-bar">
-      <button class="stab active" onclick="showStab('biz',this)">🏢 Business</button>
-      <button class="stab" onclick="showStab('users',this)">👤 Users</button>
-      <button class="stab" onclick="showStab('revenue',this)">💰 Revenue</button>
-      <button class="stab" onclick="showStab('packages',this)">🎫 Packages</button>
-      <button class="stab" onclick="showStab('costs',this)">📋 Fixed Costs</button>
-      <button class="stab" onclick="showStab('expcat',this)">🗂 Exp. Categories</button>
-      <button class="stab" onclick="showStab('subs',this)">🔔 Subscriptions</button>
-      <button class="stab" onclick="showStab('log',this)">📜 Admin Log</button>
+    <div class="stab-toggle-wrap" id="stab-toggle-wrap">
+      <button type="button" class="stab-toggle-btn" id="stab-toggle-btn" onclick="toggleStab()" aria-label="Settings menu">⚙️</button>
+      <div class="stab-bar">
+        <button class="stab active" onclick="showStab('biz',this)">🏢 Business</button>
+        <button class="stab" onclick="showStab('users',this)">👤 Users</button>
+        <button class="stab" onclick="showStab('revenue',this)">💰 Revenue</button>
+        <button class="stab" onclick="showStab('packages',this)">🎫 Packages</button>
+        <button class="stab" onclick="showStab('costs',this)">📋 Fixed Costs</button>
+        <button class="stab" onclick="showStab('expcat',this)">🗂 Exp. Categories</button>
+        <button class="stab" onclick="showStab('subs',this)">🔔 Subscriptions</button>
+        <button class="stab" onclick="showStab('log',this)">📜 Admin Log</button>
+      </div>
     </div>
 
     <div id="stab-biz">
@@ -907,11 +931,20 @@ function buildNav(){
   }).map(t=>`<button class="nav-btn${t.adminOnly?' admin-tab':''}" onclick="navClick('${t.id}',this)">${t.label}</button>`).join('');
 }
 
+function toggleNav(){
+  var wrap=document.getElementById('nav-toggle-wrap');
+  if(!wrap)return;
+  wrap.classList.toggle('nav-open');
+  var btn=document.getElementById('nav-toggle-btn');
+  if(btn)btn.textContent=wrap.classList.contains('nav-open')?'✕':'☰';
+}
+
 function navClick(id,btn){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
+  if(window.innerWidth<=768){ var w=document.getElementById('nav-toggle-wrap'); if(w){ w.classList.remove('nav-open'); var b=document.getElementById('nav-toggle-btn'); if(b)b.textContent='☰'; }}
   renderAll();
 }
 
@@ -1609,10 +1642,19 @@ async function deleteAsset(id){
 // ═══════════════════════════════════════════════════════════════════
 // SETTINGS
 // ═══════════════════════════════════════════════════════════════════
+function toggleStab(){
+  var wrap=document.getElementById('stab-toggle-wrap');
+  if(!wrap)return;
+  wrap.classList.toggle('stab-open');
+  var btn=document.getElementById('stab-toggle-btn');
+  if(btn)btn.textContent=wrap.classList.contains('stab-open')?'✕':'⚙️';
+}
+
 function showStab(id,btn){
   document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('[id^="stab-"]').forEach(p=>p.style.display='none');
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
+  if(window.innerWidth<=768){ var w=document.getElementById('stab-toggle-wrap'); if(w){ w.classList.remove('stab-open'); var b=document.getElementById('stab-toggle-btn'); if(b)b.textContent='⚙️'; }}
   renderSettings();
 }
 
