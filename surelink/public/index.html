@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <title>SureLink WiFi — Business Manager</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#EEF2F7;min-height:100vh;color:#1a1a2e;}
+html{font-size:16px;scroll-behavior:smooth;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#EEF2F7;min-height:100vh;color:#1a1a2e;overflow-x:hidden;}
 input,select,textarea,button{font-family:inherit;}
+img{max-width:100%;height:auto;}
 
 /* LOGIN */
-#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1E3A5F 0%,#0B6E6E 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;}
-.login-box{background:#fff;border-radius:20px;padding:36px 32px;width:360px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1E3A5F 0%,#0B6E6E 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));overflow-y:auto;}
+.login-box{background:#fff;border-radius:20px;padding:36px 32px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;}
 .login-logo{font-size:44px;margin-bottom:8px;}
 .login-biz{font-size:21px;font-weight:700;color:#1E3A5F;margin-bottom:3px;}
 .login-sub{font-size:12px;color:#6B7280;margin-bottom:24px;}
@@ -20,7 +22,7 @@ input,select,textarea,button{font-family:inherit;}
 .pin-dot:focus{border-color:#0B6E6E;}
 
 /* HEADER */
-#header{background:#1E3A5F;color:#fff;position:sticky;top:0;z-index:200;box-shadow:0 3px 16px rgba(0,0,0,.3);display:none;}
+#header{background:#1E3A5F;color:#fff;position:sticky;top:0;z-index:200;box-shadow:0 3px 16px rgba(0,0,0,.3);display:none;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
 #hdr-top{padding:10px 18px 4px;display:flex;align-items:center;justify-content:space-between;}
 .hdr-left{display:flex;align-items:center;gap:10px;}
 .biz-logo-hdr{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0;}
@@ -39,7 +41,7 @@ input,select,textarea,button{font-family:inherit;}
 .nav-btn.admin-tab.active{background:#C9A84C;color:#1E3A5F;}
 
 /* PAGES */
-.page{display:none;padding:16px 14px 60px;max-width:1160px;margin:0 auto;}
+.page{display:none;padding:16px 14px 60px;max-width:1160px;margin:0 auto;padding-left:max(14px,env(safe-area-inset-left));padding-right:max(14px,env(safe-area-inset-right));padding-bottom:max(60px,env(safe-area-inset-bottom));}
 .page.active{display:block;}
 
 /* CARDS */
@@ -84,7 +86,8 @@ input,select,textarea,button{font-family:inherit;}
 .btn-save:disabled{opacity:.5;cursor:not-allowed;}
 
 /* TABLES */
-.tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tbl{width:100%;min-width:320px;border-collapse:collapse;font-size:11px;}
 .tbl th{background:#1E3A5F;color:#fff;padding:8px 9px;text-align:right;white-space:nowrap;font-weight:700;}
 .tbl th:first-child,.tbl th.left{text-align:left;}
 .tbl td{padding:7px 9px;text-align:right;border-bottom:1px solid #F3F4F6;}
@@ -170,10 +173,52 @@ input,select,textarea,button{font-family:inherit;}
 /* EDIT BANNER */
 #edit-mode-banner{display:none;background:#FEF3C7;border:2px solid #C9A84C;border-radius:10px;padding:12px 15px;margin-bottom:16px;}
 
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:768px){
+  .page{padding:12px 10px 50px;}
+  .card{padding:14px;}
+  #hdr-top{flex-wrap:wrap;gap:8px;}
+  .hdr-right{flex-wrap:wrap;}
+  #modal-overlay{padding:20px 10px 10px;align-items:flex-start;}
+  #modal-box{padding:20px;max-width:100%;margin:auto;}
+  .bar-row{flex-wrap:wrap;}
+  .bar-lbl{width:100%;text-align:left;}
+  .bar-val{width:auto;}
+  .perm-grid{grid-template-columns:1fr;}
+}
 @media(max-width:580px){
   .r2,.r3{grid-template-columns:1fr;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px;}
   .kpi .kv{font-size:16px;}
+  .kpi .kl,.kpi .ks{font-size:8px;}
   .si{flex-direction:column;align-items:flex-start;}
+  .login-box{padding:28px 20px;}
+  .pin-dot{width:44px;height:52px;font-size:22px;}
+  .card-title{font-size:11px;}
+  .tbl{font-size:10px;}
+  .tbl th,.tbl td{padding:6px 7px;}
+  #toast{left:10px;right:10px;max-width:none;}
+  .stab-bar{gap:6px;}
+  .stab{padding:6px 11px;font-size:10px;}
+  .guide-step{flex-direction:column;gap:6px;}
+  .btn{padding:10px 14px;min-height:44px;}
+  .logout-btn{padding:8px 14px;min-height:44px;}
+}
+@media(max-width:400px){
+  #login-screen{padding:8px;}
+  .login-box{padding:22px 16px;}
+  .pin-dot{width:40px;height:48px;font-size:20px;}
+  .pin-row{gap:6px;}
+  .hdr-left div:first-child + div{max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+  #hdr-biz{font-size:14px;}
+  .nav-btn{padding:8px 10px;font-size:10px;}
+  .kpi-grid{grid-template-columns:1fr;}
+  .kpi .kv{font-size:18px;}
+}
+/* Touch-friendly: ensure tap targets on touch devices */
+@media(hover:none){
+  .btn,.nav-btn,.stab,.si,.logout-btn,.modal-close{min-height:44px;min-width:44px;}
+  .pin-dot{min-height:48px;}
 }
 </style>
 </head>
@@ -218,7 +263,7 @@ input,select,textarea,button{font-family:inherit;}
         <label>Business Name</label>
         <input type="text" id="reg-biz" placeholder="e.g. SureLink WiFi" style="font-size:14px"/>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="r2">
         <div class="fg">
           <label>Your Full Name *</label>
           <input type="text" id="reg-name" placeholder="Your full name" style="font-size:14px"/>
