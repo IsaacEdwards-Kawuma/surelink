@@ -23,16 +23,23 @@ app.use(helmet({ contentSecurityPolicy: false })); // CSP off for inline scripts
 var allowedOriginsList = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().replace(/\/+$/, '')).filter(Boolean)
   : [];
+function originAllowed(origin) {
+  if (!origin) return true;
+  if (allowedOriginsList.length === 0) return true;
+  if (allowedOriginsList.indexOf(origin) !== -1) return true;
+  // Allow localhost / 127.0.0.1 for dev
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true;
+  // Allow common frontend hosts (Render, Vercel, custom)
+  if (/\.onrender\.com$/i.test(origin) || /\.vercel\.app$/i.test(origin) || /surelink-manager\.net$/i.test(origin)) return true;
+  return false;
+}
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOriginsList.length === 0) return callback(null, true);
-    if (allowedOriginsList.indexOf(origin) !== -1) return callback(null, true);
-    // Allow common frontend hosts (custom domain + Render/Vercel)
-    if (/surelink-manager\.net/.test(origin) || /vercel\.app/.test(origin) || /onrender\.com/.test(origin)) return callback(null, true);
-    callback(null, false);
+    callback(null, originAllowed(origin));
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // ── Rate limiting ───────────────────────────────────────────────────
