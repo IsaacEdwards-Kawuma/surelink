@@ -34,6 +34,9 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
 });
 
+// Never log or expose DATABASE_URL (it contains credentials)
+DATABASE_URL = '[REDACTED]';
+
 // Convert ? placeholders to $1, $2 for pg
 function toPg(sql) {
   let n = 0;

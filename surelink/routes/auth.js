@@ -54,7 +54,7 @@ router.post('/register', async (req, res) => {
       const row = await db.get('SELECT COUNT(*) as c FROM users');
       userCount = parseInt(row?.c || 0, 10);
     } catch (dbErr) {
-      return res.status(503).json({ error: 'Database not ready. Set DATABASE_URL and run: npm run setup' });
+      return res.status(503).json({ error: 'Database not ready. Please try again later.' });
     }
     const isFirstRun = userCount === 0;
 
