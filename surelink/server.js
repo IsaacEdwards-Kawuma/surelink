@@ -45,18 +45,7 @@ const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 300 });
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ── API routes ──────────────────────────────────────────────────────
-app.use('/api/auth',  loginLimiter, authRouter);
-app.use('/api/sales', apiLimiter,   salesRouter);
-app.use('/api',       apiLimiter,   dataRouter);
-
-// ── Serve frontend ──────────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// ── Health check ────────────────────────────────────────────────────
+// ── Health check (before catch-all so it is reachable) ────────────────
 app.get('/api/health', (req, res) => {
   let dbOk = false;
   try {
@@ -72,6 +61,17 @@ app.get('/api/health', (req, res) => {
     version: '2.0.0',
     time: new Date().toISOString()
   });
+});
+
+// ── API routes ──────────────────────────────────────────────────────
+app.use('/api/auth',  loginLimiter, authRouter);
+app.use('/api/sales', apiLimiter,   salesRouter);
+app.use('/api',       apiLimiter,   dataRouter);
+
+// ── Serve frontend ──────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ── Scheduled auto-backup (daily at 2am) ───────────────────────────

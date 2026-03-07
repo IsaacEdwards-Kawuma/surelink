@@ -564,9 +564,12 @@ input,select,textarea,button{font-family:inherit;}
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // API LAYER — backend URL is set here (same app works on Render, Vercel, custom domain)
+// If your frontend is at surelink-manager.net but the API runs elsewhere (e.g. Render),
+// set API_BASE to that backend URL (e.g. 'https://surelink-wifi-manager.onrender.com').
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
-var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : (RENDER_APP_URL.replace(/\/+$/, '') + '/api');
+var API_BASE = ''; // e.g. 'https://surelink-wifi-manager.onrender.com' when API is on another host
+var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
 
