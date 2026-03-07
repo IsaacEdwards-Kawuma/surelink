@@ -158,14 +158,16 @@ img{max-width:100%;height:auto;}
 .alert-amber{background:#FEF3C7;color:#92400E;border-left:4px solid #C9A84C;}
 .alert-blue{background:#EFF6FF;color:#1E3A5F;border-left:4px solid #1E3A5F;}
 
-/* SETTINGS TABS — collapsible slide bar (Business, Users, Revenue, Packages, etc.) */
-.stab-toggle-wrap{display:flex;flex-direction:column;gap:0;margin-bottom:18px;border:1px solid #E5E7EB;border-radius:10px;background:#F9FAFB;overflow:hidden;}
-.stab-toggle-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;background:#1E3A5F;color:#fff;border:none;border-radius:0;cursor:pointer;font-size:12px;font-weight:700;text-align:left;transition:background .2s;}
+/* SETTINGS TABS — symbol toggles expand/collapse (Business, Users, Revenue, etc.) */
+.stab-toggle-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+.stab-toggle-row{display:flex;align-items:center;gap:8px;}
+.stab-toggle-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;background:#1E3A5F;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;transition:background .2s,transform .2s;}
 .stab-toggle-btn:hover{background:#2d4a73;}
-.stab-toggle-btn .stab-chevron{transition:transform .25s ease;}
+.stab-toggle-btn:active{transform:scale(.95);}
+.stab-toggle-btn .stab-chevron{transition:transform .25s ease;display:inline-block;}
 .stab-toggle-wrap.stab-open .stab-toggle-btn .stab-chevron{transform:rotate(180deg);}
-.stab-bar{display:flex;flex-wrap:wrap;gap:6px;max-height:0;overflow:hidden;transition:max-height .35s ease;padding:0 10px;background:transparent;}
-.stab-toggle-wrap.stab-open .stab-bar{max-height:320px;padding:10px;}
+.stab-bar{display:flex;flex-wrap:wrap;gap:6px;max-height:0;overflow:hidden;transition:max-height .35s ease;}
+.stab-toggle-wrap.stab-open .stab-bar{max-height:320px;}
 .stab{padding:8px 12px;border-radius:7px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:#EEF2F7;color:#374151;transition:all .15s;}
 .stab:hover{background:#E5E7EB;}
 .stab.active{background:#1E3A5F;color:#fff;}
@@ -563,10 +565,11 @@ img{max-width:100%;height:auto;}
       <button class="btn btn-sm btn-gray" onclick="downloadBackup()">⬇️ Download Backup</button>
     </div>
     <div class="stab-toggle-wrap stab-open" id="stab-toggle-wrap">
-      <button type="button" class="stab-toggle-btn" id="stab-toggle-btn" onclick="toggleStab()" aria-label="Settings sections" aria-expanded="true">
-        <span>Settings sections</span>
-        <span class="stab-chevron" aria-hidden="true">▼</span>
-      </button>
+      <div class="stab-toggle-row">
+        <button type="button" class="stab-toggle-btn" id="stab-toggle-btn" onclick="toggleStab()" aria-label="Expand or collapse sections" aria-expanded="true">
+          <span class="stab-chevron" aria-hidden="true">▼</span>
+        </button>
+      </div>
       <div class="stab-bar">
         <button class="stab active" onclick="showStab('biz',this)">🏢 Business</button>
         <button class="stab" onclick="showStab('users',this)">👤 Users</button>
