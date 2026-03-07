@@ -27,7 +27,8 @@ app.use(cors({
     if (!origin) return callback(null, true);
     if (allowedOriginsList.length === 0) return callback(null, true);
     if (allowedOriginsList.indexOf(origin) !== -1) return callback(null, true);
-    if (/vercel\.app/.test(origin) || /onrender\.com/.test(origin)) return callback(null, true);
+    // Allow common frontend hosts (custom domain + Render/Vercel)
+    if (/surelink-manager\.net/.test(origin) || /vercel\.app/.test(origin) || /onrender\.com/.test(origin)) return callback(null, true);
     callback(null, false);
   },
   credentials: true

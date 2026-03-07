@@ -568,7 +568,7 @@ input,select,textarea,button{font-family:inherit;}
 // set API_BASE to that backend URL (e.g. 'https://surelink-wifi-manager.onrender.com').
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
-var API_BASE = ''; // e.g. 'https://surelink-wifi-manager.onrender.com' when API is on another host
+var API_BASE = ''; // e.g. 'https://surelink-wifi-manager.onrender.com' when frontend is on surelink-manager.net but API runs on Render
 var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
@@ -590,7 +590,11 @@ async function api(method, path, body) {
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
-  const data = await r.json();
+  var data;
+  try { data = await r.json(); } catch (_) {
+    if (!r.ok) throw new Error('Server unreachable or wrong API URL (got ' + r.status + '). Set API_BASE if the API runs on another host.');
+    throw new Error('Invalid server response');
+  }
   if (!r.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
@@ -650,7 +654,8 @@ function modalBg(e){ if(e.target===document.getElementById('modal-overlay'))clos
 // ═══════════════════════════════════════════════════════════════════
 async function checkConn(){
   try{
-    await fetch(API+'/health');
+    var r = await fetch(API+'/health');
+    if (!r.ok) throw new Error('Server returned ' + r.status);
     ['conn-dot','conn-dot2'].forEach(id=>{var el=document.getElementById(id);if(el)el.classList.remove('off');});
     ['conn-text','conn-text2'].forEach(id=>{var el=document.getElementById(id);if(el)el.textContent='Server connected';});
     var hc=document.getElementById('hdr-conn');
@@ -693,7 +698,7 @@ async function checkFirstRun(){
   }catch(e){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
-    if(connEl)connEl.textContent='Cannot connect to server. Try again later.';
+    if(connEl)connEl.textContent='Cannot connect to server. Try again later. If the API runs on another host (e.g. Render), set API_BASE in the code and redeploy.';
     document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
 }
