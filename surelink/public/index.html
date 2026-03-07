@@ -1700,7 +1700,7 @@ function showStab(id,btn){
     p.style.display='none';
   });
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
-  /* keep sections list expanded so user can switch to others without re-opening */
+  closeStab();  /* collapse list; symbol stays visible so user can tap again to pick another */
   renderSettings();
 }
 
