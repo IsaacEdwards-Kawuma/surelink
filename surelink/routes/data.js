@@ -61,7 +61,7 @@ router.patch('/vouchers/sell', requireAuth, (req, res) => {
   res.json({ found, notFound });
 });
 
-router.delete('/vouchers/:id', requireAdmin, (req, res) => {
+router.delete('/vouchers/:id', requireAuth, requireAdmin, (req, res) => {
   db.prepare('DELETE FROM vouchers WHERE id = ?').run(req.params.id);
   db.logAction(req.user.name, 'Voucher Deleted', req.params.id, req.ip);
   res.json({ ok: true });
@@ -93,7 +93,7 @@ router.post('/expenses', requireAuth, (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM expenses WHERE id = ?').get(id));
 });
 
-router.put('/expenses/:id', requireAdmin, (req, res) => {
+router.put('/expenses/:id', requireAuth, requireAdmin, (req, res) => {
   const d = req.body;
   db.prepare(`UPDATE expenses SET description=?, amount=?, category=?, subcategory=?, date_display=? WHERE id=?`)
     .run(d.desc, d.amt, d.cat, d.sub, d.dateDisp, req.params.id);
@@ -101,7 +101,7 @@ router.put('/expenses/:id', requireAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id));
 });
 
-router.delete('/expenses/:id', requireAdmin, (req, res) => {
+router.delete('/expenses/:id', requireAuth, requireAdmin, (req, res) => {
   const row = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM expenses WHERE id = ?').run(req.params.id);
   db.logAction(req.user.name, 'Expense Deleted', row?.description || '', req.ip);
@@ -128,7 +128,7 @@ router.post('/assets', requireAuth, (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM assets WHERE id = ?').get(id));
 });
 
-router.put('/assets/:id', requireAdmin, (req, res) => {
+router.put('/assets/:id', requireAuth, requireAdmin, (req, res) => {
   const d = req.body;
   db.prepare(`UPDATE assets SET name=?, category=?, value=?, date=?, status=?, notes=?, updated_at=datetime('now') WHERE id=?`)
     .run(d.name, d.category, d.value, d.date, d.status, d.notes, req.params.id);
@@ -136,7 +136,7 @@ router.put('/assets/:id', requireAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM assets WHERE id = ?').get(req.params.id));
 });
 
-router.delete('/assets/:id', requireAdmin, (req, res) => {
+router.delete('/assets/:id', requireAuth, requireAdmin, (req, res) => {
   const row = db.prepare('SELECT * FROM assets WHERE id = ?').get(req.params.id);
   db.prepare('DELETE FROM assets WHERE id = ?').run(req.params.id);
   db.logAction(req.user.name, 'Asset Deleted', row?.name || '', req.ip);
@@ -147,12 +147,12 @@ router.delete('/assets/:id', requireAdmin, (req, res) => {
 // USERS (admin only)
 // ════════════════════════════════════════════════════════════════════
 
-router.get('/users', requireAdmin, (req, res) => {
+router.get('/users', requireAuth, requireAdmin, (req, res) => {
   const rows = db.prepare('SELECT id, name, id_number, role, phone, email, permissions, active FROM users ORDER BY name').all();
   res.json(rows.map(u => ({ ...u, permissions: safeJSON(u.permissions) })));
 });
 
-router.post('/users', requireAdmin, (req, res) => {
+router.post('/users', requireAuth, requireAdmin, (req, res) => {
   const d = req.body;
   if (!d.name || !d.pin) return res.status(400).json({ error: 'Name and PIN required' });
   if (String(d.pin).length !== 4) return res.status(400).json({ error: 'PIN must be 4 digits' });
@@ -167,7 +167,7 @@ router.post('/users', requireAdmin, (req, res) => {
   res.status(201).json({ id, name: d.name });
 });
 
-router.put('/users/:id', requireAdmin, (req, res) => {
+router.put('/users/:id', requireAuth, requireAdmin, (req, res) => {
   const d = req.body;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
@@ -182,7 +182,7 @@ router.put('/users/:id', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-router.patch('/users/:id/toggle', requireAdmin, (req, res) => {
+router.patch('/users/:id/toggle', requireAuth, requireAdmin, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Not found' });
   const newActive = user.active ? 0 : 1;
@@ -191,7 +191,7 @@ router.patch('/users/:id/toggle', requireAdmin, (req, res) => {
   res.json({ active: !!newActive });
 });
 
-router.delete('/users/:id', requireAdmin, (req, res) => {
+router.delete('/users/:id', requireAuth, requireAdmin, (req, res) => {
   const count = db.prepare('SELECT COUNT(*) as c FROM users WHERE active=1').get().c;
   if (count <= 1) return res.status(400).json({ error: 'Cannot delete the last active user' });
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
@@ -211,7 +211,7 @@ router.get('/settings', requireAuth, (req, res) => {
   res.json(result);
 });
 
-router.put('/settings/:key', requireAdmin, (req, res) => {
+router.put('/settings/:key', requireAuth, requireAdmin, (req, res) => {
   const allowed = ['business','revenue_sources','voucher_packages','fixed_costs','expense_categories','subscriptions'];
   if (!allowed.includes(req.params.key)) return res.status(400).json({ error: 'Invalid settings key' });
   db.saveSetting(req.params.key, req.body, req.user.name);
@@ -231,13 +231,13 @@ router.get('/subscriptions', requireAuth, (req, res) => {
 // ADMIN LOG
 // ════════════════════════════════════════════════════════════════════
 
-router.get('/admin-log', requireAdmin, (req, res) => {
+router.get('/admin-log', requireAuth, requireAdmin, (req, res) => {
   const limit = parseInt(req.query.limit) || 300;
   const rows = db.prepare('SELECT * FROM admin_log ORDER BY id DESC LIMIT ?').all(limit);
   res.json(rows);
 });
 
-router.delete('/admin-log', requireAdmin, (req, res) => {
+router.delete('/admin-log', requireAuth, requireAdmin, (req, res) => {
   db.prepare('DELETE FROM admin_log').run();
   db.logAction(req.user.name, 'Log Cleared', '', req.ip);
   res.json({ ok: true });
@@ -247,7 +247,7 @@ router.delete('/admin-log', requireAdmin, (req, res) => {
 // BACKUP DOWNLOAD (admin only)
 // ════════════════════════════════════════════════════════════════════
 
-router.get('/backup/download', requireAdmin, (req, res) => {
+router.get('/backup/download', requireAuth, requireAdmin, (req, res) => {
   const backup = {
     exportedAt: new Date().toISOString(),
     exportedBy: req.user.name,

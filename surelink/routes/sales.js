@@ -52,7 +52,7 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 // ── PUT /api/sales/:id — edit existing entry ────────────────────────
-router.put('/:id', requireAdmin, (req, res) => {
+router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   const d = req.body;
   const { reason } = d;
   if (!reason || !reason.trim()) return res.status(400).json({ error: 'Reason for edit is required' });
@@ -125,7 +125,7 @@ router.put('/:id', requireAdmin, (req, res) => {
 });
 
 // ── DELETE /api/sales/:id ───────────────────────────────────────────
-router.delete('/:id', requireAdmin, (req, res) => {
+router.delete('/:id', requireAuth, requireAdmin, (req, res) => {
   const row = db.prepare('SELECT * FROM sales WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
 
