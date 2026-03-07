@@ -568,7 +568,8 @@ input,select,textarea,button{font-family:inherit;}
 // set API_BASE to that backend URL (e.g. 'https://surelink-wifi-manager.onrender.com').
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
-var API_BASE = 'https://surelink.onrender.com'; // backend on Render — frontend at surelink-manager.net uses this
+// Set this to your actual Render (or backend) URL — copy from Render dashboard, e.g. https://surelink-xxxx.onrender.com
+var API_BASE = 'https://surelink.onrender.com';
 var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
@@ -699,7 +700,7 @@ async function checkFirstRun(){
   }catch(e){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
-    if(connEl)connEl.textContent='Cannot connect to server. Try again later. If the API runs on another host (e.g. Render), set API_BASE in the code and redeploy.';
+    if(connEl)connEl.textContent='Cannot connect to server. Check that API_BASE in the code matches your Render URL (e.g. https://your-app.onrender.com). On free tier, wait 30–60s for the service to wake up and try again.';
     document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
 }

@@ -1,5 +1,12 @@
 // db/setup.js — Create PostgreSQL tables (run once: node db/setup.js)
 require('dotenv').config();
+
+// Skip during Render Build (env vars not available); setup runs at Start when DATABASE_URL is set
+if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.startsWith('postgresql://')) {
+  console.log('DATABASE_URL not set — skipping setup. Tables will be created when the app starts (npm run setup && npm start).');
+  process.exit(0);
+}
+
 const db = require('./index');
 
 async function main() {
