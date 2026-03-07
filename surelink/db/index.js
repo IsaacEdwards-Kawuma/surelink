@@ -2,10 +2,29 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error('❌ DATABASE_URL is required. Add it in .env or your host\'s environment.');
+let DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL || !DATABASE_URL.startsWith('postgresql://')) {
+  console.error('❌ DATABASE_URL is required and must be a postgresql:// URL. Add your Neon connection string in Render Environment.');
   throw new Error('DATABASE_URL is required');
+}
+
+try {
+  const u = new URL(DATABASE_URL);
+  const host = (u.hostname || '').toLowerCase();
+  if (host === 'base' || host === 'host') {
+    console.error('❌ DATABASE_URL has invalid host ("' + host + '"). Paste the full Neon URL from Neon dashboard (host like ep-xxx.region.aws.neon.tech).');
+    throw new Error('Invalid DATABASE_URL host');
+  }
+} catch (e) {
+  if (e.message === 'Invalid DATABASE_URL host') throw e;
+  if (e.code === 'ERR_INVALID_URL') {
+    console.error('❌ DATABASE_URL is not a valid URL. Check Render Environment.');
+    throw new Error('DATABASE_URL must be a valid postgresql:// URL');
+  }
+}
+
+if (DATABASE_URL.includes('sslmode=require') && !DATABASE_URL.includes('uselibpqcompat')) {
+  DATABASE_URL = DATABASE_URL.replace('sslmode=require', 'uselibpqcompat=true&sslmode=require');
 }
 
 const pool = new Pool({
