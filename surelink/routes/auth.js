@@ -8,6 +8,14 @@ const db = require('../db');
 const SECRET = process.env.JWT_SECRET || 'change_this_secret';
 const TOKEN_EXPIRY = '12h';
 
+const WEAK_PINS = new Set(['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','0123','3210','1212','2323','1230','4321']);
+function isWeakPin(pin) {
+  const s = String(pin);
+  if (s.length !== 4) return false;
+  if (WEAK_PINS.has(s)) return true;
+  return /^(\d)\1{3}$/.test(s);
+}
+
 function uid() { return 'id' + Date.now() + Math.random().toString(36).slice(2, 6); }
 
 // ── Middleware: verify JWT ─────────────────────────────────────────
@@ -70,6 +78,7 @@ router.post('/register', async (req, res) => {
 
     if (!name || !name.trim()) return res.status(400).json({ error: 'Full name is required' });
     if (!pin || !/^\d{4}$/.test(String(pin))) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+    if (isWeakPin(pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
     if (confirmPin !== undefined && String(pin) !== String(confirmPin)) return res.status(400).json({ error: 'PINs do not match' });
 
     const existing = await db.get('SELECT id FROM users WHERE LOWER(name) = LOWER(?)', name.trim());
@@ -110,6 +119,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { userId, pin } = req.body;
   if (!userId || !pin) return res.status(400).json({ error: 'User and PIN required' });
+  if (isWeakPin(pin)) return res.status(400).json({ error: 'This PIN is too easy. Use a stronger PIN.' });
 
   const user = await db.get('SELECT * FROM users WHERE id = ? AND active = 1', userId);
   if (!user) return res.status(401).json({ error: 'User not found or inactive' });

@@ -3,6 +3,7 @@ require('dotenv').config();
 const express  = require('express');
 const cors     = require('cors');
 const helmet   = require('helmet');
+const morgan   = require('morgan');
 const rateLimit = require('express-rate-limit');
 const cron     = require('node-cron');
 const path     = require('path');
@@ -45,6 +46,9 @@ const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 300 });
 // ── Body parsing ────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// ── Request logging ────────────────────────────────────────────────
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Health check (before catch-all so it is reachable) ────────────────
 app.get('/api/health', async (req, res) => {

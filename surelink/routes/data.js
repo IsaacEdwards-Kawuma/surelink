@@ -127,10 +127,19 @@ router.get('/users', requireAuth, requireAdmin, async (req, res) => {
   res.json(rows.map(u => ({ ...u, permissions: safeJSON(u.permissions) })));
 });
 
+function isWeakPin(pin) {
+  const s = String(pin);
+  if (s.length !== 4) return false;
+  const weak = new Set(['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','0123','3210','1212','2323','1230','4321']);
+  if (weak.has(s)) return true;
+  return /^(\d)\1{3}$/.test(s);
+}
+
 router.post('/users', requireAuth, requireAdmin, async (req, res) => {
   const d = req.body;
   if (!d.name || !d.pin) return res.status(400).json({ error: 'Name and PIN required' });
   if (String(d.pin).length !== 4) return res.status(400).json({ error: 'PIN must be 4 digits' });
+  if (isWeakPin(d.pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
   const id = uid();
   const pinHash = bcrypt.hashSync(String(d.pin), 10);
   await db.run(`INSERT INTO users (id, name, id_number, role, pin_hash, phone, email, permissions, active) VALUES (?,?,?,?,?,?,?,?,1)`,
@@ -143,6 +152,7 @@ router.put('/users/:id', requireAuth, requireAdmin, async (req, res) => {
   const d = req.body;
   const user = await db.get('SELECT * FROM users WHERE id = ?', req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
+  if (d.pin && isWeakPin(d.pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
   const pinHash = d.pin ? bcrypt.hashSync(String(d.pin), 10) : user.pin_hash;
   await db.run(`UPDATE users SET name=?, id_number=?, role=?, pin_hash=?, phone=?, email=?, permissions=?, updated_at=NOW() WHERE id=?`,
     d.name || user.name, d.idNumber ?? user.id_number, d.role || user.role, pinHash, d.phone ?? user.phone, d.email ?? user.email, JSON.stringify(d.permissions ?? safeJSON(user.permissions)), req.params.id);
@@ -219,6 +229,80 @@ router.get('/backup/download', requireAuth, requireAdmin, async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Content-Disposition', `attachment; filename="surelink-backup-${new Date().toISOString().slice(0,10)}.json"`);
   res.send(JSON.stringify(backup, null, 2));
+});
+
+// BACKUP RESTORE (admin only; replaces sales, vouchers, expenses, assets, settings, log — not users)
+router.post('/backup/restore', requireAuth, requireAdmin, async (req, res) => {
+  const backup = req.body;
+  if (!backup || typeof backup !== 'object') return res.status(400).json({ error: 'Invalid backup: send JSON body from a downloaded backup file.' });
+
+  const sales = Array.isArray(backup.sales) ? backup.sales : [];
+  const vouchers = Array.isArray(backup.vouchers) ? backup.vouchers : [];
+  const expenses = Array.isArray(backup.expenses) ? backup.expenses : [];
+  const assets = Array.isArray(backup.assets) ? backup.assets : [];
+  const settingsRows = Array.isArray(backup.settings) ? backup.settings : [];
+  const logRows = Array.isArray(backup.log) ? backup.log : [];
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx.run('DELETE FROM admin_log');
+      await tx.run('DELETE FROM sales');
+      await tx.run('DELETE FROM vouchers');
+      await tx.run('DELETE FROM expenses');
+      await tx.run('DELETE FROM assets');
+      await tx.run('DELETE FROM settings');
+
+      for (const r of sales) {
+        await tx.run(
+          `INSERT INTO sales (id, date, week, attendant, total_rev, wifi, charging, expenses, exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data, entered_by, entered_at, edited_by, edited_at, edit_history)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          r.id, r.date, r.week || '', r.attendant || '', r.total_rev ?? 0, r.wifi ?? 0, r.charging ?? 0, r.expenses ?? 0,
+          r.exp_desc || '', r.exp_cat || '', r.exp_sub || '', r.notes || '', r.downtime ? 1 : 0,
+          typeof r.revenue_data === 'string' ? r.revenue_data : JSON.stringify(r.revenue_data || {}),
+          r.entered_by || '', r.entered_at || '', r.edited_by || '', r.edited_at || '', r.edit_history || '[]'
+        );
+      }
+      for (const r of vouchers) {
+        await tx.run(
+          `INSERT INTO vouchers (id, code, package_id, type, duration, price, issued_date, sold_date, status, attendant, batch)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          r.id, r.code, r.package_id || '', r.type || '', r.duration || '', r.price ?? 0, r.issued_date || '', r.sold_date || '', r.status || 'Unused', r.attendant || '', r.batch || ''
+        );
+      }
+      for (const r of expenses) {
+        await tx.run(
+          `INSERT INTO expenses (id, date, date_display, description, category, subcategory, amount, entered_by, sale_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          r.id, r.date || '', r.date_display || '', r.description || '', r.category || '', r.subcategory || '', r.amount ?? 0, r.entered_by || '', r.sale_id || ''
+        );
+      }
+      for (const r of assets) {
+        await tx.run(
+          `INSERT INTO assets (id, name, category, value, date, source, status, notes, expense_id, added_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          r.id, r.name, r.category || 'Other', r.value ?? 0, r.date || '', r.source || 'manual', r.status || 'Active', r.notes || '', r.expense_id || '', r.added_by || ''
+        );
+      }
+      for (const r of settingsRows) {
+        if (r.key) await tx.run(
+          `INSERT INTO settings (key, value, updated_at, updated_by) VALUES (?, ?, COALESCE(?, NOW()), ?)`,
+          r.key, r.value, r.updated_at, r.updated_by || 'restore'
+        );
+      }
+      for (const r of logRows) {
+        await tx.run(
+          `INSERT INTO admin_log (user_name, action, detail, ip_address) VALUES (?, ?, ?, ?)`,
+          r.user_name || '', r.action || '', r.detail || '', r.ip_address || ''
+        );
+      }
+    });
+
+    await db.logAction(req.user.name, 'Data Restore', `Restored ${sales.length} sales, ${vouchers.length} vouchers, ${expenses.length} expenses, ${assets.length} assets`, req.ip);
+    res.json({ ok: true, restored: { sales: sales.length, vouchers: vouchers.length, expenses: expenses.length, assets: assets.length, settings: settingsRows.length, log: logRows.length } });
+  } catch (e) {
+    console.error('[restore]', e.message);
+    return res.status(500).json({ error: 'Restore failed: ' + (e.message || 'database error') });
+  }
 });
 
 function safeJSON(v) {
