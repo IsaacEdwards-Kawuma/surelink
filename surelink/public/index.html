@@ -568,7 +568,7 @@ input,select,textarea,button{font-family:inherit;}
 // set API_BASE to that backend URL (e.g. 'https://surelink-wifi-manager.onrender.com').
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
-var API_BASE = ''; // e.g. 'https://surelink-wifi-manager.onrender.com' when frontend is on surelink-manager.net but API runs on Render
+var API_BASE = 'https://surelink.onrender.com'; // backend on Render — frontend at surelink-manager.net uses this
 var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
