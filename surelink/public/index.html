@@ -158,10 +158,10 @@ img{max-width:100%;height:auto;}
 .alert-amber{background:#FEF3C7;color:#92400E;border-left:4px solid #C9A84C;}
 .alert-blue{background:#EFF6FF;color:#1E3A5F;border-left:4px solid #1E3A5F;}
 
-/* SETTINGS TABS — symbol toggles expand/collapse (Business, Users, Revenue, etc.) */
-.stab-toggle-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;}
+/* SETTINGS TABS — symbol toggles expand/collapse; symbol + sections stay visible when scrolling */
+.stab-toggle-wrap{display:flex;flex-direction:column;gap:8px;margin-bottom:18px;position:sticky;top:0;z-index:10;background:#fff;padding-bottom:6px;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.06);}
 .stab-toggle-row{display:flex;align-items:center;gap:8px;}
-.stab-toggle-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;background:#1E3A5F;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;transition:background .2s,transform .2s;}
+.stab-toggle-btn{display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;background:#1E3A5F;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px;line-height:1;transition:background .2s,transform .2s;flex-shrink:0;}
 .stab-toggle-btn:hover{background:#2d4a73;}
 .stab-toggle-btn:active{transform:scale(.95);}
 .stab-toggle-btn .stab-chevron{transition:transform .25s ease;display:inline-block;}
@@ -1700,7 +1700,7 @@ function showStab(id,btn){
     p.style.display='none';
   });
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
-  if(window.innerWidth<=768)closeStab();
+  /* keep sections list expanded so user can switch to others without re-opening */
   renderSettings();
 }
 
