@@ -176,6 +176,11 @@ img{max-width:100%;height:auto;}
   .stab-toggle-wrap.stab-open .stab-bar{max-height:480px;}
   .stab{width:100%;text-align:left;padding:11px 14px;}
 }
+.stab-open-sections{display:flex;align-items:center;margin-bottom:12px;}
+.stab-open-sections .stab-toggle-btn{width:32px;height:32px;font-size:14px;}
+.stab-open-sections .stab-sections-label{font-size:11px;font-weight:700;color:#1E3A5F;margin-left:6px;}
+.stab-open-sections button.stab-sections-inline{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#1E3A5F;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;}
+.stab-open-sections button.stab-sections-inline:hover{background:#2d4a73;}
 
 /* BAR CHART */
 .bar-row{display:flex;align-items:center;gap:8px;padding:4px 0;}
@@ -584,6 +589,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-biz">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div class="r2">
         <div class="fg"><label>Business Name</label><input type="text" id="s-bizname"/></div>
         <div class="fg"><label>Tagline</label><input type="text" id="s-biztag"/></div>
@@ -597,6 +603,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-users" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Users & Access</div>
         <button class="btn btn-green btn-sm" onclick="openUserModal()">+ Add User</button>
@@ -605,6 +612,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-revenue" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Revenue Sources</div>
         <button class="btn btn-green btn-sm" onclick="openRevenueModal()">+ Add Source</button>
@@ -613,6 +621,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-packages" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Voucher Packages</div>
         <button class="btn btn-green btn-sm" onclick="openPkgModal()">+ Add Package</button>
@@ -621,6 +630,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-costs" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Fixed & Recurring Costs</div>
         <button class="btn btn-green btn-sm" onclick="openCostModal()">+ Add Cost</button>
@@ -630,6 +640,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-expcat" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Expense Categories</div>
         <button class="btn btn-green btn-sm" onclick="openExpCatModal()">+ Add Category</button>
@@ -638,6 +649,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-subs" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Subscriptions Tracker</div>
         <button class="btn btn-green btn-sm" onclick="openSubModal()">+ Add</button>
@@ -647,6 +659,7 @@ img{max-width:100%;height:auto;}
     </div>
 
     <div id="stab-log" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:12px;font-weight:700;color:#1E3A5F">Admin Activity Log</div>
         <button class="btn btn-sm btn-gray" onclick="clearLog()">Clear Log</button>
@@ -1699,6 +1712,15 @@ function closeStab(){
   var wrap=document.getElementById('stab-toggle-wrap');
   var btn=document.getElementById('stab-toggle-btn');
   if(wrap){ wrap.classList.remove('stab-open'); if(btn)btn.setAttribute('aria-expanded','false'); }
+}
+
+function openStabSections(){
+  var wrap=document.getElementById('stab-toggle-wrap');
+  var btn=document.getElementById('stab-toggle-btn');
+  if(!wrap||!btn)return;
+  wrap.classList.add('stab-open');
+  btn.setAttribute('aria-expanded','true');
+  wrap.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function showStab(id,btn){
