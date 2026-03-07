@@ -38,9 +38,10 @@ Render can deploy from a **subdirectory**. You’ll set that in Step 3.
    - **Runtime:** `Node`.
    - **Build Command:**  
      `npm install`  
+     (Do **not** run `npm run setup` here — env vars like DATABASE_URL are not available during Build.)
    - **Start Command:**  
      `npm run setup && npm start`  
-     (setup creates the DB at runtime so it exists in the container).
+     (setup runs at start when DATABASE_URL is available; it creates tables if missing.)
 
 ## Step 3: Environment variables on Render
 
