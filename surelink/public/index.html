@@ -262,22 +262,8 @@ img{max-width:100%;height:auto;}
   .pin-dot{min-height:48px;}
 }
 </style>
-#offline-banner{display:none;position:fixed;bottom:16px;right:16px;z-index:10000;max-width:280px;border-radius:10px;background:#E67E22;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2);overflow:hidden;}
-#offline-banner.show{display:block;}
-#offline-banner .offline-trigger{padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;}
-#offline-banner .offline-trigger:hover{background:rgba(0,0,0,.08);}
-#offline-banner .offline-detail{display:none;padding:8px 14px 12px;font-size:11px;line-height:1.4;border-top:1px solid rgba(255,255,255,.2);}
-#offline-banner.show.expanded .offline-detail{display:block;}
-#offline-banner .offline-trigger .offline-chevron{font-size:10px;transition:transform .2s;}
-#offline-banner.show.expanded .offline-chevron{transform:rotate(180deg);}
 </head>
 <body>
-<div id="offline-banner" aria-live="polite" role="status">
-  <button type="button" class="offline-trigger" onclick="document.getElementById('offline-banner').classList.toggle('expanded')" aria-label="Offline. Click for details">
-    <span>Offline</span><span class="offline-chevron">▼</span>
-  </button>
-  <div class="offline-detail">Data may be stale. Reconnect to sync.</div>
-</div>
 
 <!-- LOGIN / REGISTER SCREEN -->
 <div id="login-screen">
@@ -2183,12 +2169,6 @@ function renderGuide(){
 // ═══════════════════════════════════════════════════════════════════
 (async()=>{
   if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('/sw.js'); }catch(_){} }
-  var offlineBanner=document.getElementById('offline-banner');
-  function setOffline(show){ if(offlineBanner){ offlineBanner.classList.toggle('show',!!show); if(!show)offlineBanner.classList.remove('expanded'); } }
-  setOffline(!navigator.onLine);
-  window.addEventListener('online',function(){ setOffline(false); });
-  window.addEventListener('offline',function(){ setOffline(true); });
-
   await checkConn();
   await checkFirstRun();   // shows register panel if no users, login panel if users exist
   document.addEventListener('keydown',function(e){
