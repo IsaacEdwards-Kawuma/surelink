@@ -722,6 +722,7 @@ img{max-width:100%;height:auto;}
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
 // Set this to your actual Render (or backend) URL — copy from Render dashboard, e.g. https://surelink-xxxx.onrender.com
+// If you get 404: wait 30–60s for free-tier wake-up, or check Render Root Directory is "surelink" and the service is running.
 var API_BASE = 'https://surelink.onrender.com';
 var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
@@ -743,10 +744,14 @@ async function api(method, path, body) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN }
   };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + path, opts);
+  var url = API + path;
+  const r = await fetch(url, opts);
   var data;
   try { data = await r.json(); } catch (_) {
-    if (!r.ok) throw new Error('Server unreachable or wrong API URL (got ' + r.status + '). Set API_BASE if the API runs on another host.');
+    if (!r.ok) {
+      if (r.status === 404) throw new Error('API not found (404). Check API_BASE — currently: ' + (API_BASE || 'none') + '. Backend may be sleeping (free tier) or URL wrong.');
+      throw new Error('Server unreachable or wrong API URL (got ' + r.status + '). Set API_BASE if the API runs on another host.');
+    }
     throw new Error('Invalid server response');
   }
   if (!r.ok) {
