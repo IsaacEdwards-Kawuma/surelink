@@ -677,14 +677,15 @@ async function checkFirstRun(){
   try{
     var status=await GET('/auth/status');
     if(status.firstRun){
-      // No users yet — no default users; registration panel will show for first admin
+      // No users — clear any stale token so we don't try to load dashboard as "admin"
+      TOKEN=''; CURRENT_USER=null; localStorage.removeItem('sl_token');
       try{
         await GET('/auth/seed-defaults');
         status=await GET('/auth/status');
       }catch(_){}
     }
     if(status.firstRun){
-      // Still no users — show registration panel
+      // Still no users — show registration panel only
       document.getElementById('login-panel').style.display='none';
       document.getElementById('register-panel').style.display='block';
       setTimeout(()=>document.getElementById('reg-name').focus(),200);
@@ -811,7 +812,7 @@ async function doLogout(){
 // ═══════════════════════════════════════════════════════════════════
 async function loadAllData(){
   try{
-    var isAdmin = CURRENT_USER && CURRENT_USER.permissions === 'all';
+    var isAdmin = !!(CURRENT_USER && CURRENT_USER.permissions === 'all');
     var fetches = [
       GET('/sales'), GET('/vouchers'), GET('/expenses'),
       GET('/assets'), GET('/settings')
@@ -1870,7 +1871,7 @@ function renderGuide(){
     document.getElementById('r-count').textContent=codes.length?codes.length+' codes entered':'';
   });
 
-  // Auto-login if a saved token is still valid
+  // Auto-login only if we have a token and we're not in first-run (no users) mode
   if(TOKEN){
     try{
       var me=await GET('/auth/me');
