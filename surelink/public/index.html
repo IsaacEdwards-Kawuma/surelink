@@ -46,8 +46,9 @@ img{max-width:100%;height:auto;}
 .nav-btn.admin-tab.active{background:#C9A84C;color:#1E3A5F;}
 @media(max-width:768px){
   .nav-toggle-btn{display:flex;align-items:center;justify-content:center;}
-  #nav{flex-basis:100%;order:10;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;}
-  .nav-toggle-wrap.nav-open #nav{max-height:80px;opacity:1;}
+  #nav{flex-basis:100%;order:10;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;flex-direction:column;gap:4px;}
+  .nav-toggle-wrap.nav-open #nav{max-height:80vh;opacity:1;}
+  .nav-toggle-wrap.nav-open .nav-btn{width:100%;text-align:left;padding:12px 14px;border-radius:8px;}
 }
 
 /* PAGES */
@@ -155,8 +156,9 @@ img{max-width:100%;height:auto;}
 .stab.active{background:#1E3A5F;color:#fff;}
 @media(max-width:768px){
   .stab-toggle-btn{display:flex;align-items:center;justify-content:center;}
-  .stab-bar{flex-basis:100%;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;}
-  .stab-toggle-wrap.stab-open .stab-bar{max-height:160px;opacity:1;}
+  .stab-bar{flex-basis:100%;max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .2s;flex-direction:column;}
+  .stab-toggle-wrap.stab-open .stab-bar{max-height:80vh;opacity:1;}
+  .stab-toggle-wrap.stab-open .stab{width:100%;text-align:left;padding:12px 14px;}
 }
 
 /* BAR CHART */
