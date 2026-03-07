@@ -221,11 +221,11 @@ input,select,textarea,button{font-family:inherit;}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="fg">
           <label>Your Full Name *</label>
-          <input type="text" id="reg-name" placeholder="e.g. Andrew" style="font-size:14px"/>
+          <input type="text" id="reg-name" placeholder="Your full name" style="font-size:14px"/>
         </div>
         <div class="fg">
           <label>ID / Staff Number</label>
-          <input type="text" id="reg-idnum" placeholder="e.g. ADM-001"/>
+          <input type="text" id="reg-idnum" placeholder="e.g. ID or staff number"/>
         </div>
       </div>
       <div class="fg">
@@ -677,7 +677,7 @@ async function checkFirstRun(){
   try{
     var status=await GET('/auth/status');
     if(status.firstRun){
-      // No users yet — try to seed default admin account (Andrew) then refresh
+      // No users yet — no default users; registration panel will show for first admin
       try{
         await GET('/auth/seed-defaults');
         status=await GET('/auth/status');

@@ -79,7 +79,7 @@ Use the output as `JWT_SECRET`.
 ## Step 5: Use the app
 
 - Open the Render URL in the browser.
-- Default login: **Andrew** / PIN **1234** (change after first login in Settings → Users).
+- No default users — create your first admin account on the registration screen, then add users in Settings.
 
 ## Important: SQLite on Render free tier
 

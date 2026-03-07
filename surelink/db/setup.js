@@ -208,16 +208,12 @@ insertSetting.run('expense_categories', JSON.stringify([
   { id: 'ec8', name: 'Operating',    active: true, subs: ['Marketing','Voucher Printing','Airtime','Data Bundles','General'] }
 ]));
 
-// ── Seed default users so the login dropdown has accounts (change PIN after first login) ──
+// No default users — first admin is created via the app's registration screen
 const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
 if (userCount === 0) {
-  const insertUser = db.prepare(`
-    INSERT INTO users (id, name, id_number, role, pin_hash, permissions, active) VALUES (?, ?, ?, ?, ?, ?, 1)
-  `);
-  insertUser.run('ADM-001', 'Andrew', 'ADM-001', 'admin', bcrypt.hashSync('1234', 10), 'all');
-  console.log('   Default admin: Andrew (PIN 1234) — add more users in Settings after first login.');
+  console.log('   No default users — open the app to create your first admin account.');
 }
 
 db.close();
 console.log('\n✅ Database ready:', DB_PATH);
-console.log('👉 Run: npm start  — then open the app and select an account to sign in.\n');
+console.log('👉 Run: npm start  — then open the app and create your first admin account.\n');

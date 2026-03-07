@@ -61,8 +61,7 @@ JWT_SECRET=replace_this_with_50_random_characters_like_xK9mP2qR7vN3wL8jT5
 ```bash
 npm run setup
 ```
-Creates `db/surelink.db` with all tables and a default admin user:
-- **Andrew** (Admin) — PIN: 1234
+Creates `db/surelink.db` with all tables. No default users — you create the first admin when you open the app.
 
 ### Step 7: Start the server
 ```bash
@@ -75,7 +74,7 @@ You'll see:
 ```
 
 ### Step 8: Open the app
-Go to **http://localhost:3000** in your browser. Log in with Andrew / PIN 1234.
+Go to **http://localhost:3000** in your browser. Create your first admin account on the registration screen, then add more users in Settings.
 
 ---
 
@@ -138,13 +137,9 @@ Then point your domain to it using Nginx as a reverse proxy.
 
 ---
 
-## Default Login Credentials
+## First-time setup
 
-| User   | ID Number | Role  | PIN  |
-|--------|-----------|-------|------|
-| Andrew | ADM-001   | Admin | 1234 |
-
-**Change the PIN and add more users** after first login in Settings → Users.
+There are **no default users**. When you open the app for the first time, you’ll see the registration screen. Create your first admin account there, then add more users in **Settings → Users**.
 
 ---
 
@@ -196,11 +191,11 @@ npm install
 
 **Forgot admin PIN:**
 ```bash
-# Reset Andrew's PIN to 1234:
+# Reset a user's PIN (replace 'YourName' with the user's name):
 node -e "
 const db=require('./db');
 const bcrypt=require('bcryptjs');
-db.prepare('UPDATE users SET pin_hash=? WHERE name=?').run(bcrypt.hashSync('1234',10),'Andrew');
+db.prepare('UPDATE users SET pin_hash=? WHERE name=?').run(bcrypt.hashSync('1234',10),'YourName');
 console.log('Done');
 "
 ```

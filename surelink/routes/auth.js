@@ -30,20 +30,11 @@ router.get('/status', (req, res) => {
   res.json({ firstRun: count === 0, userCount: count });
 });
 
-// ── GET /api/auth/seed-defaults — ensure default users exist (only when table is empty) ──
+// ── GET /api/auth/seed-defaults — no default users; first admin is created via registration ──
 router.get('/seed-defaults', (req, res) => {
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
   if (count > 0) return res.json({ ok: true, message: 'Users already exist' });
-  try {
-    const bcrypt = require('bcryptjs');
-    const insertUser = db.prepare(`
-      INSERT INTO users (id, name, id_number, role, pin_hash, permissions, active) VALUES (?, ?, ?, ?, ?, ?, 1)
-    `);
-    insertUser.run('ADM-001', 'Andrew', 'ADM-001', 'admin', bcrypt.hashSync('1234', 10), 'all');
-    return res.json({ ok: true, message: 'Default admin created (Andrew, PIN 1234)' });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
+  return res.json({ ok: true, message: 'No default users — create your first admin on the registration screen' });
 });
 
 // ── GET /api/auth/users — list active users for login dropdown ─────
