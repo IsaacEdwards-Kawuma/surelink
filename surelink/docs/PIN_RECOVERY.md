@@ -1,8 +1,18 @@
 # PIN recovery
 
-SureLink uses **4-digit PINs** for login. There is **no self-serve “forgot PIN”** flow.
+SureLink uses **4-digit PINs** for login.
 
-## How to reset a user’s PIN (admin only)
+## Forgot PIN? (self-serve)
+
+1. On the **login** screen, click **Forgot PIN?**
+2. **Select your account** from the dropdown and click **Get reset code**.
+3. A **6-character code** is shown (e.g. `ABC123`). It is valid for **15 minutes**.
+4. Enter the code, your **new PIN** (4 digits), and **confirm PIN**, then click **Set new PIN**.
+5. Sign in with your new PIN.
+
+The code is one-time use. If it expires, request a new one.
+
+## How to reset a user’s PIN (admin)
 
 1. Log in as an **admin**.
 2. Go to **Settings → Users**.

@@ -23,6 +23,8 @@ All authenticated routes require header: `Authorization: Bearer <token>`.
 | GET | `/api/auth/users` | No | List users for login dropdown. Returns `[{ id, name, id_number, role }]`. |
 | POST | `/api/auth/register` | No (first run) or Admin | Create account. Body: `name`, `pin`, `confirmPin`, optional `idNumber`, `phone`, `businessName`, `role`, `permissions`. PIN: 4 digits, not weak (e.g. 1234, 0000). |
 | POST | `/api/auth/login` | No | Login. Body: `userId`, `pin`. Returns `{ token, user }`. Rate-limited (e.g. 20 attempts / 15 min). |
+| POST | `/api/auth/forgot-pin` | No | Request PIN reset code. Body: `userId`. Returns `{ code, expiresIn: 900 }`. Code valid 15 min. |
+| POST | `/api/auth/reset-pin` | No | Set new PIN with code. Body: `code`, `newPin`, `confirmPin`. One-time use. |
 | POST | `/api/auth/logout` | Yes | Logout (logged in Admin Log). |
 | GET | `/api/auth/me` | Yes | Current user. Returns `{ id, name, role, permissions }`. |
 

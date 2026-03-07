@@ -117,6 +117,14 @@ async function main() {
   CREATE INDEX IF NOT EXISTS idx_log_ts ON admin_log(timestamp);
   CREATE INDEX IF NOT EXISTS idx_log_user ON admin_log(user_name);
 
+  -- PIN RESET (for forgot-PIN flow)
+  CREATE TABLE IF NOT EXISTS pin_reset_requests (
+    code       TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_pin_reset_expires ON pin_reset_requests(expires_at);
+
   -- SETTINGS
   CREATE TABLE IF NOT EXISTS settings (
     key         TEXT PRIMARY KEY,

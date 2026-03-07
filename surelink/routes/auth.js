@@ -144,4 +144,51 @@ router.post('/logout', requireAuth, async (req, res) => {
 // ── GET /api/auth/me ───────────────────────────────────────────────
 router.get('/me', requireAuth, (req, res) => res.json(req.user));
 
+// ── POST /api/auth/forgot-pin — request one-time reset code ────────
+function randomCode(len = 6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+router.post('/forgot-pin', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'Select your account' });
+
+  const user = await db.get('SELECT id, name FROM users WHERE id = ? AND active = 1', userId);
+  if (!user) return res.status(404).json({ error: 'User not found or inactive' });
+
+  const code = randomCode(6).toUpperCase();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+  await db.run('INSERT INTO pin_reset_requests (code, user_id, expires_at) VALUES (?, ?, ?)', code, user.id, expiresAt);
+
+  return res.json({ code, expiresIn: 900, message: 'Use this code to set a new PIN. Valid for 15 minutes.' });
+});
+
+// ── POST /api/auth/reset-pin — set new PIN with code ───────────────
+router.post('/reset-pin', async (req, res) => {
+  const { code, newPin, confirmPin } = req.body;
+  if (!code || !code.trim()) return res.status(400).json({ error: 'Reset code required' });
+  if (!newPin || !/^\d{4}$/.test(String(newPin))) return res.status(400).json({ error: 'PIN must be exactly 4 digits' });
+  if (isWeakPin(newPin)) return res.status(400).json({ error: 'PIN too easy. Choose a stronger PIN.' });
+  if (String(newPin) !== String(confirmPin)) return res.status(400).json({ error: 'PINs do not match' });
+
+  const row = await db.get('SELECT * FROM pin_reset_requests WHERE code = ?', code.trim().toUpperCase());
+  if (!row) return res.status(400).json({ error: 'Invalid or expired code. Request a new one.' });
+  if (new Date(row.expires_at) < new Date()) {
+    await db.run('DELETE FROM pin_reset_requests WHERE code = ?', code.trim().toUpperCase());
+    return res.status(400).json({ error: 'Code expired. Request a new one.' });
+  }
+
+  const pinHash = bcrypt.hashSync(String(newPin), 10);
+  await db.run('UPDATE users SET pin_hash = ?, updated_at = NOW() WHERE id = ?', pinHash, row.user_id);
+  await db.run('DELETE FROM pin_reset_requests WHERE code = ?', code.trim().toUpperCase());
+
+  const user = await db.get('SELECT name FROM users WHERE id = ?', row.user_id);
+  if (user) await db.logAction(user.name, 'PIN Reset', 'Via forgot-PIN code', req.ip);
+
+  return res.json({ ok: true, message: 'PIN updated. Sign in with your new PIN.' });
+});
+
 module.exports = { router, requireAuth, requireAdmin };

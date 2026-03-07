@@ -287,6 +287,7 @@ img{max-width:100%;height:auto;}
     </div>
     <div id="login-err" style="color:#C0392B;font-size:11px;min-height:16px;margin-bottom:8px;text-align:center"></div>
     <button class="btn btn-primary btn-full" style="padding:12px;font-size:14px" onclick="doLogin()" id="login-btn">Sign In →</button>
+    <div style="margin-top:10px"><button type="button" class="btn btn-gray btn-full" style="font-size:11px;padding:8px" onclick="showForgotPin()">Forgot PIN?</button></div>
     <div id="conn-status" style="font-size:10px;color:#9CA3AF;margin-top:12px">
       <span class="conn-dot" id="conn-dot"></span><span id="conn-text">Connecting...</span>
       <button type="button" id="conn-retry" onclick="checkFirstRun()" style="display:none;margin-left:10px;padding:4px 10px;font-size:11px;font-weight:700;background:#1E3A5F;color:#fff;border:none;border-radius:6px;cursor:pointer">Retry</button>
@@ -346,6 +347,45 @@ img{max-width:100%;height:auto;}
     <div id="conn-status2" style="font-size:10px;color:#9CA3AF;margin-top:10px;text-align:center">
       <span class="conn-dot" id="conn-dot2"></span><span id="conn-text2">Connecting...</span>
     </div>
+  </div>
+
+  <!-- ── FORGOT PIN PANEL ── -->
+  <div class="login-box" id="forgot-pin-panel" style="display:none;max-width:400px">
+    <div class="login-logo">🔑</div>
+    <div class="login-biz">Reset your PIN</div>
+    <div class="login-sub" style="margin-bottom:16px">Get a one-time code, then set a new PIN</div>
+
+    <div id="forgot-step1">
+      <div class="fg" style="text-align:left"><label>Select your account</label><select id="forgot-user" style="font-size:13px;width:100%"></select></div>
+      <div id="forgot-err1" style="color:#C0392B;font-size:11px;min-height:16px;margin-bottom:8px;text-align:center"></div>
+      <button class="btn btn-primary btn-full" style="padding:12px" onclick="requestResetCode()" id="forgot-get-btn">Get reset code</button>
+    </div>
+
+    <div id="forgot-step2" style="display:none">
+      <div style="background:#EFF6FF;border-radius:10px;padding:12px;margin-bottom:14px;text-align:center">
+        <div style="font-size:10px;color:#1E3A5F;margin-bottom:4px">Your code (valid 15 min)</div>
+        <div id="forgot-code-display" style="font-size:22px;font-weight:700;letter-spacing:4px;color:#1E3A5F"></div>
+      </div>
+      <div class="fg" style="text-align:left"><label>Enter code</label><input type="text" id="forgot-code" maxlength="6" placeholder="ABC123" style="letter-spacing:3px;font-size:18px;text-transform:uppercase"/></div>
+      <label style="font-size:11px;font-weight:700;color:#1E3A5F;display:block;margin:10px 0 5px;text-align:left">New PIN (4 digits)</label>
+      <div class="pin-row" style="justify-content:flex-start;gap:8px">
+        <input class="pin-dot" type="password" maxlength="1" id="fp0" oninput="fpinNext(0)" onkeydown="fpinBack(event,0)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fp1" oninput="fpinNext(1)" onkeydown="fpinBack(event,1)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fp2" oninput="fpinNext(2)" onkeydown="fpinBack(event,2)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fp3" oninput="fpinNext(3)" onkeydown="fpinBack(event,3)"/>
+      </div>
+      <label style="font-size:11px;font-weight:700;color:#1E3A5F;display:block;margin:10px 0 5px;text-align:left">Confirm PIN</label>
+      <div class="pin-row" style="justify-content:flex-start;gap:8px">
+        <input class="pin-dot" type="password" maxlength="1" id="fc0" oninput="fconNext(0)" onkeydown="fconBack(event,0)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fc1" oninput="fconNext(1)" onkeydown="fconBack(event,1)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fc2" oninput="fconNext(2)" onkeydown="fconBack(event,2)"/>
+        <input class="pin-dot" type="password" maxlength="1" id="fc3" oninput="fconNext(3)" onkeydown="fconBack(event,3)"/>
+      </div>
+      <div id="forgot-err2" style="color:#C0392B;font-size:11px;min-height:16px;margin-bottom:8px;text-align:center"></div>
+      <button class="btn btn-green btn-full" style="padding:12px" onclick="submitResetPin()" id="forgot-set-btn">Set new PIN</button>
+    </div>
+
+    <div style="margin-top:14px"><button type="button" class="btn btn-gray" style="font-size:11px;padding:6px 12px" onclick="backToLogin()">← Back to sign in</button></div>
   </div>
 
 </div>
@@ -810,17 +850,20 @@ async function checkFirstRun(){
       // Still no users — show registration panel only
       document.getElementById('login-panel').style.display='none';
       document.getElementById('register-panel').style.display='block';
+      document.getElementById('forgot-pin-panel').style.display='none';
       setTimeout(()=>document.getElementById('reg-name').focus(),200);
     }else{
       // Users exist — show normal login and fill dropdown
       document.getElementById('login-panel').style.display='block';
       document.getElementById('register-panel').style.display='none';
+      document.getElementById('forgot-pin-panel').style.display='none';
       await loadLoginUsers();
       setTimeout(()=>document.getElementById('p0').focus(),200);
     }
   }catch(e){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
+    document.getElementById('forgot-pin-panel').style.display='none';
     if(connDot)connDot.classList.add('off');
     if(connEl)connEl.textContent='Cannot connect. Tap Retry.';
     if(retryBtn)retryBtn.style.display='inline-block';
@@ -863,6 +906,68 @@ function isWeakPin(pin){
   if(!pin||pin.length!==4)return false;
   var weak=['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','0123','3210','1212','2323','1230','4321'];
   return weak.indexOf(pin)>=0 || /^(\d)\1{3}$/.test(pin);
+}
+
+function showForgotPin(){
+  document.getElementById('login-panel').style.display='none';
+  document.getElementById('register-panel').style.display='none';
+  document.getElementById('forgot-pin-panel').style.display='block';
+  document.getElementById('forgot-user').innerHTML=document.getElementById('login-user').innerHTML;
+  document.getElementById('forgot-step1').style.display='block';
+  document.getElementById('forgot-step2').style.display='none';
+  document.getElementById('forgot-err1').textContent='';
+  document.getElementById('forgot-err2').textContent='';
+}
+
+function backToLogin(){
+  document.getElementById('forgot-pin-panel').style.display='none';
+  document.getElementById('login-panel').style.display='block';
+  document.getElementById('login-err').textContent='';
+}
+
+var FORGOT_RESET_CODE='';
+async function requestResetCode(){
+  var userId=document.getElementById('forgot-user').value;
+  var errEl=document.getElementById('forgot-err1');
+  if(!userId){errEl.textContent='Select your account';return;}
+  var btn=document.getElementById('forgot-get-btn');
+  btn.disabled=true; btn.textContent='Sending...'; errEl.textContent='';
+  try{
+    var r=await POST('/auth/forgot-pin',{userId});
+    FORGOT_RESET_CODE=r.code;
+    document.getElementById('forgot-code-display').textContent=r.code;
+    document.getElementById('forgot-step1').style.display='none';
+    document.getElementById('forgot-step2').style.display='block';
+    document.getElementById('forgot-code').value='';
+    [0,1,2,3].forEach(i=>{document.getElementById('fp'+i).value='';document.getElementById('fc'+i).value='';});
+  }catch(e){errEl.textContent=e.message||'Failed to get code';}
+  btn.disabled=false; btn.textContent='Get reset code';
+}
+
+function getFpin(){return [0,1,2,3].map(i=>document.getElementById('fp'+i).value).join('');}
+function getFcon(){return [0,1,2,3].map(i=>document.getElementById('fc'+i).value).join('');}
+function fpinNext(i){var v=document.getElementById('fp'+i).value;if(v&&i<3)document.getElementById('fp'+(i+1)).focus();}
+function fpinBack(e,i){if(e.key==='Backspace'&&!document.getElementById('fp'+i).value&&i>0)document.getElementById('fp'+(i-1)).focus();}
+function fconNext(i){var v=document.getElementById('fc'+i).value;if(v&&i<3)document.getElementById('fc'+(i+1)).focus();}
+function fconBack(e,i){if(e.key==='Backspace'&&!document.getElementById('fc'+i).value&&i>0)document.getElementById('fc'+(i-1)).focus();}
+
+async function submitResetPin(){
+  var code=(document.getElementById('forgot-code').value||'').trim().toUpperCase();
+  var newPin=getFpin();
+  var confirm=getFcon();
+  var errEl=document.getElementById('forgot-err2');
+  if(!code||code.length!==6){errEl.textContent='Enter the 6-character code';return;}
+  if(newPin.length!==4){errEl.textContent='Enter 4-digit new PIN';return;}
+  if(isWeakPin(newPin)){errEl.textContent='PIN too easy. Pick a stronger one.';return;}
+  if(newPin!==confirm){errEl.textContent='PINs do not match';return;}
+  var btn=document.getElementById('forgot-set-btn');
+  btn.disabled=true; errEl.textContent='';
+  try{
+    await POST('/auth/reset-pin',{code,newPin,confirmPin:confirm});
+    errEl.style.color='#1A7A3E'; errEl.textContent='PIN updated. Sign in with your new PIN.';
+    setTimeout(function(){backToLogin();},1500);
+  }catch(e){errEl.style.color=''; errEl.textContent=e.message||'Reset failed';}
+  btn.disabled=false;
 }
 
 async function doLogin(){
