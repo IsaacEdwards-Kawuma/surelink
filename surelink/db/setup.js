@@ -57,15 +57,6 @@ async function main() {
   CREATE INDEX IF NOT EXISTS idx_sales_week ON sales(week);
   CREATE INDEX IF NOT EXISTS idx_sales_entry_ref ON sales(entry_ref);
 
-  -- Migration: add new sales columns for existing DBs
-  try {
-    const hasStatus = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'transaction_status'");
-    if (!hasStatus) await db.query("ALTER TABLE sales ADD COLUMN transaction_status TEXT DEFAULT 'pending'");
-    const hasRef = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'entry_ref'");
-    if (!hasRef) await db.query("ALTER TABLE sales ADD COLUMN entry_ref TEXT");
-    await db.query("UPDATE sales SET entry_ref = 'SL-' || REPLACE(date, '-', '') || '-001' WHERE entry_ref IS NULL OR entry_ref = ''");
-  } catch (e) { console.log('   (sales columns migration skipped or already applied)'); }
-
   -- VOUCHERS
   CREATE TABLE IF NOT EXISTS vouchers (
     id          TEXT PRIMARY KEY,
@@ -158,6 +149,17 @@ async function main() {
     created_at  TIMESTAMPTZ DEFAULT NOW()
   );
   `);
+
+  // Migration: add new sales columns for existing DBs (created before this script had the columns)
+  try {
+    const hasStatus = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'transaction_status'");
+    if (!hasStatus) await db.query("ALTER TABLE sales ADD COLUMN transaction_status TEXT DEFAULT 'pending'");
+    const hasRef = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'entry_ref'");
+    if (!hasRef) await db.query("ALTER TABLE sales ADD COLUMN entry_ref TEXT");
+    await db.query("UPDATE sales SET entry_ref = 'SL-' || REPLACE(date, '-', '') || '-001' WHERE entry_ref IS NULL OR entry_ref = ''");
+  } catch (e) {
+    console.log('   (sales columns migration skipped or already applied)');
+  }
 
   const keys = ['business', 'revenue_sources', 'voucher_packages', 'fixed_costs', 'expense_categories', 'subscriptions'];
   const defaults = {
