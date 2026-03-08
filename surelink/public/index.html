@@ -442,6 +442,16 @@ img{max-width:100%;height:auto;}
     <div id="modal-body"></div>
   </div>
 </div>
+<div id="idle-warn-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:600;align-items:center;justify-content:center;padding:20px;flex-direction:column;box-sizing:border-box">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+    <div style="font-size:18px;margin-bottom:8px">⏱️ Session timeout</div>
+    <p id="idle-warn-msg" style="color:#4B5563;font-size:14px;margin:0 0 20px;line-height:1.5">You have been inactive. You will be logged out in <strong id="idle-countdown">2</strong> minutes unless you extend.</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button type="button" class="btn btn-primary" onclick="idleExtendSession()">Extend session</button>
+      <button type="button" class="btn btn-gray" onclick="idleLogoutNow()">Log out now</button>
+    </div>
+  </div>
+</div>
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page">
@@ -649,6 +659,7 @@ img{max-width:100%;height:auto;}
         <button class="stab" onclick="showStab('expcat',this)">🗂 Exp. Categories</button>
         <button class="stab" onclick="showStab('subs',this)">🔔 Subscriptions</button>
         <button class="stab" onclick="showStab('log',this)">📜 Admin Log</button>
+        <button class="stab" onclick="showStab('monitoring',this)">📊 Monitoring</button>
       </div>
     </div>
 
@@ -729,6 +740,17 @@ img{max-width:100%;height:auto;}
         <button class="btn btn-sm btn-gray" onclick="clearLog()">Clear Log</button>
       </div>
       <div id="log-list"></div>
+    </div>
+
+    <div id="stab-monitoring" style="display:none">
+      <div class="stab-open-sections"><button type="button" class="stab-sections-inline" onclick="openStabSections()"><span>▼</span> Sections</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:12px;font-weight:700;color:#1E3A5F">System Monitoring</div>
+        <button class="btn btn-sm btn-gray" onclick="loadMonitoring()">🔄 Refresh</button>
+      </div>
+      <div id="monitoring-content" style="padding:12px 0;font-size:12px">
+        <div style="color:#6B7280">Loading…</div>
+      </div>
     </div>
   </div>
 </div>
@@ -1076,11 +1098,56 @@ async function doRegister(){
   }
 }
 
+var IDLE_WARN_MS=15*60*1000, IDLE_COUNTDOWN_MS=2*60*1000;
+var lastActivity=Date.now(), idleWarningShown=false, idleCountdownTimer=null, idleCheckInterval=null, idleCountdownInterval=null;
+
+function _resetIdle(){ lastActivity=Date.now(); }
+function _idleShow(){
+  if(idleWarningShown)return;
+  idleWarningShown=true;
+  var overlay=document.getElementById('idle-warn-overlay'); var msg=document.getElementById('idle-warn-msg'); var cnt=document.getElementById('idle-countdown');
+  if(overlay)overlay.style.display='flex';
+  var remaining=Math.ceil(IDLE_COUNTDOWN_MS/60000);
+  function updateCountdown(){
+    var left=Math.max(0,Math.ceil((IDLE_COUNTDOWN_MS-(Date.now()-_idleShow.started))/1000));
+    if(cnt)cnt.textContent=Math.ceil(left/60)||0;
+    if(left<=0&&idleCountdownInterval){clearInterval(idleCountdownInterval);idleCountdownInterval=null;}
+  }
+  _idleShow.started=Date.now();
+  if(idleCountdownTimer)clearTimeout(idleCountdownTimer);
+  idleCountdownTimer=setTimeout(function(){ document.getElementById('idle-warn-overlay').style.display='none'; idleWarningShown=false; idleCountdownTimer=null; if(idleCountdownInterval){clearInterval(idleCountdownInterval);idleCountdownInterval=null;} doLogout(); },IDLE_COUNTDOWN_MS);
+  idleCountdownInterval=setInterval(updateCountdown,1000);
+  updateCountdown();
+}
+function idleExtendSession(){
+  if(idleCountdownTimer){clearTimeout(idleCountdownTimer);idleCountdownTimer=null;}
+  if(idleCountdownInterval){clearInterval(idleCountdownInterval);idleCountdownInterval=null;}
+  lastActivity=Date.now(); idleWarningShown=false;
+  var o=document.getElementById('idle-warn-overlay');if(o)o.style.display='none';
+}
+function idleLogoutNow(){
+  if(idleCountdownTimer){clearTimeout(idleCountdownTimer);idleCountdownTimer=null;}
+  if(idleCountdownInterval){clearInterval(idleCountdownInterval);idleCountdownInterval=null;}
+  idleWarningShown=false;
+  var o=document.getElementById('idle-warn-overlay');if(o)o.style.display='none';
+  doLogout();
+}
+function _idleCheck(){
+  if(!CURRENT_USER||idleWarningShown)return;
+  if(Date.now()-lastActivity>=IDLE_WARN_MS)_idleShow();
+}
+
 async function enterApp(token, user){
   TOKEN=token; CURRENT_USER=user;
   localStorage.setItem('sl_token',TOKEN);
   document.getElementById('login-screen').style.display='none';
   document.getElementById('header').style.display='block';
+  lastActivity=Date.now(); idleWarningShown=false;
+  if(idleCheckInterval)clearInterval(idleCheckInterval);
+  idleCheckInterval=setInterval(_idleCheck,30000);
+  ['mousemove','keydown','click','touchstart','scroll'].forEach(function(ev){
+    document.removeEventListener(ev,_resetIdle); document.addEventListener(ev,_resetIdle,{passive:true});
+  });
   await loadAllData();
   buildNav(); updateHeader(); setDefaults();
   buildRevFields(); buildVPkgFields(); buildVFilterBtns(); buildExpCatSelects();
@@ -1095,6 +1162,11 @@ async function doLogout(){
   TOKEN=''; CURRENT_USER=null;
   localStorage.removeItem('sl_token');
   SALES=[]; VOUCHERS=[]; EXPENSES=[]; ASSETS=[];
+  if(idleCheckInterval){clearInterval(idleCheckInterval);idleCheckInterval=null;}
+  if(idleCountdownTimer){clearTimeout(idleCountdownTimer);idleCountdownTimer=null;}
+  if(idleCountdownInterval){clearInterval(idleCountdownInterval);idleCountdownInterval=null;}
+  idleWarningShown=false;
+  var o=document.getElementById('idle-warn-overlay');if(o)o.style.display='none';
   document.getElementById('header').style.display='none';
   document.getElementById('login-screen').style.display='flex';
   [0,1,2,3].forEach(i=>{document.getElementById('p'+i).value='';});
@@ -1911,6 +1983,7 @@ function showStab(id,btn){
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
   closeStab();  /* collapse list; symbol stays visible so user can tap again to pick another */
   renderSettings();
+  if(id==='monitoring')loadMonitoring();
 }
 
 function renderSettings(){
@@ -1920,6 +1993,7 @@ function renderSettings(){
     if(el)el.value=[biz.name,biz.tagline,biz.owner,biz.phone,biz.addr][i]||'';
   });
   renderUsers();renderRevList();renderPkgList();renderCostList();renderExpCatList();renderSubsList();renderLog();
+  if(document.getElementById('stab-monitoring')&&document.getElementById('stab-monitoring').style.display==='block')loadMonitoring();
   // Subscription alerts
   var alerts=(SETTINGS.subscriptions||[]).filter(s=>{if(!s.active||!s.next_due&&!s.nextDue)return false;return daysUntil(s.next_due||s.nextDue)<=(s.alert_days||s.alertDays||5);});
   var sa=document.getElementById('subs-alerts');
@@ -2162,6 +2236,23 @@ async function clearLog(){
   if(!confirm('Clear all admin log entries?'))return;
   try{await DEL('/admin-log');ADMIN_LOG=[];renderLog();toast('Log cleared');}
   catch(e){toast('Error: '+e.message,'error');}
+}
+
+async function loadMonitoring(){
+  var el=document.getElementById('monitoring-content');if(!el)return;
+  el.innerHTML='<div style="color:#6B7280">Loading…</div>';
+  try{
+    var m=await GET('/monitoring');
+    var db=m.database||{}; var srv=m.server||{};
+    var dbRow=db.status==='connected'?'<span style="color:#1A7A3E;font-weight:700">● Connected</span>':'<span style="color:#C0392B;font-weight:700">● Disconnected</span>'+(db.error?' <span style="color:#6B7280">'+db.error+'</span>':'');
+    var tbl='';if(db.tables){for(var t in db.tables){var v=db.tables[t];tbl+='<div style="display:flex;justify-content:space-between;padding:4px 0"><span>'+t+'</span><span style="font-weight:700;color:#1E3A5F">'+(v!=null?v:'—')+'</span></div>';}}
+    var mem=srv.memory||{}; var uptime=srv.uptimeSeconds!=null?srv.uptimeSeconds:0; var mins=Math.floor(uptime/60); var hrs=Math.floor(mins/60); var uptimeStr=hrs?hrs+'h '+mins%60+'m':mins+'m';
+    el.innerHTML='<div style="display:grid;gap:16px">'+
+      '<div class="card" style="padding:14px"><div style="font-weight:700;color:#1E3A5F;margin-bottom:8px">Database</div><div>'+dbRow+'</div><div style="margin-top:10px;font-size:11px;color:#6B7280">Table row counts:</div><div style="margin-top:4px">'+tbl+'</div></div>'+
+      '<div class="card" style="padding:14px"><div style="font-weight:700;color:#1E3A5F;margin-bottom:8px">Server</div><div style="display:grid;gap:6px;font-size:11px"><div>Uptime: <strong>'+uptimeStr+'</strong></div><div>Node: <strong>'+ (srv.nodeVersion||'—')+'</strong></div><div>Memory: heap <strong>'+ (mem.heapUsedMB||'—')+'</strong> / '+ (mem.heapTotalMB||'—')+' MB, RSS <strong>'+ (mem.rssMB||'—')+' MB</strong></div></div></div>'+
+      '<div style="font-size:10px;color:#9CA3AF">Last updated: '+ (m.time||'—') +'</div>'+
+    '</div>';
+  }catch(e){el.innerHTML='<div style="color:#C0392B">Failed to load: '+e.message+'</div>';}
 }
 
 // Backup download

@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('./auth');
 
+const SERVER_STARTED_AT = Date.now();
+
 function uid() { return 'id' + Date.now() + Math.random().toString(36).slice(2, 6); }
 function pad(n) { return String(n).padStart(3, '0'); }
 
@@ -119,6 +121,40 @@ router.delete('/assets/:id', requireAuth, requireAdmin, async (req, res) => {
   await db.run('DELETE FROM assets WHERE id = ?', req.params.id);
   await db.logAction(req.user.name, 'Asset Deleted', row?.name || '', req.ip);
   res.json({ ok: true });
+});
+
+// MONITORING (admin only) — database & server status
+router.get('/monitoring', requireAuth, requireAdmin, async (req, res) => {
+  let dbStatus = 'disconnected';
+  let dbError = null;
+  const tables = {};
+  try {
+    await db.get('SELECT 1');
+    dbStatus = 'connected';
+    const names = ['users', 'sales', 'vouchers', 'expenses', 'assets', 'admin_log', 'settings', 'subscriptions'];
+    for (const t of names) {
+      try {
+        const r = await db.get(`SELECT COUNT(*) as c FROM ${t}`);
+        tables[t] = parseInt(r?.c || 0, 10);
+      } catch (_) { tables[t] = null; }
+    }
+  } catch (e) {
+    dbError = e.message || 'Unknown error';
+  }
+  const mem = process.memoryUsage();
+  res.json({
+    time: new Date().toISOString(),
+    database: { status: dbStatus, error: dbError, tables },
+    server: {
+      uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
+      nodeVersion: process.version,
+      memory: {
+        heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
+        rssMB: Math.round(mem.rss / 1024 / 1024)
+      }
+    }
+  });
 });
 
 // USERS (admin only)
