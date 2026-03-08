@@ -609,17 +609,6 @@ img{max-width:100%;height:auto;}
   </div>
 </div>
 
-<!-- SUMMARIES -->
-<div id="page-summaries" class="page">
-  <div class="card"><div class="card-title">📆 Monthly Summary</div><div style="overflow-x:auto"><table class="tbl" id="monthly-tbl"></table></div></div>
-  <div class="card"><div class="card-title">📊 Weekly Breakdown</div><div style="overflow-x:auto"><table class="tbl" id="wk-tbl"></table></div></div>
-  <div style="background:#1E3A5F;border-radius:13px;padding:20px;color:#fff;margin-bottom:14px">
-    <div style="font-size:12px;font-weight:700;margin-bottom:13px;text-transform:uppercase;letter-spacing:1px">⚖️ Break-Even Analysis</div>
-    <div id="be-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px"></div>
-  </div>
-  <div class="card"><div class="card-title">💰 Financial Position</div><div id="fin-pos"></div></div>
-</div>
-
 <!-- EXPENSES -->
 <div id="page-expenses" class="page">
   <div class="card">
@@ -768,6 +757,16 @@ img{max-width:100%;height:auto;}
       </div>
       <div id="monitoring-content" style="padding:12px 0;font-size:12px">
         <div style="color:#6B7280">Loading…</div>
+      </div>
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #E5E7EB">
+        <div class="card-title" style="margin-bottom:14px">📆 Business Summaries</div>
+        <div class="card" style="margin-bottom:14px"><div class="card-title">📆 Monthly Summary</div><div style="overflow-x:auto"><table class="tbl" id="monthly-tbl"></table></div></div>
+        <div class="card" style="margin-bottom:14px"><div class="card-title">📊 Weekly Breakdown</div><div style="overflow-x:auto"><table class="tbl" id="wk-tbl"></table></div></div>
+        <div style="background:#1E3A5F;border-radius:13px;padding:20px;color:#fff;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:13px;text-transform:uppercase;letter-spacing:1px">⚖️ Break-Even Analysis</div>
+          <div id="be-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px"></div>
+        </div>
+        <div class="card"><div class="card-title">💰 Financial Position</div><div id="fin-pos"></div></div>
       </div>
     </div>
   </div>
@@ -1232,7 +1231,6 @@ var ALL_TABS=[
   {id:'vouchers',label:'🎫 Vouchers'},
   {id:'reconcile',label:'🔍 Reconcile'},
   {id:'sales',label:'📋 Sales Log'},
-  {id:'summaries',label:'📆 Summaries'},
   {id:'expenses',label:'💸 Expenses'},
   {id:'assets',label:'🏭 Assets'},
   {id:'guide',label:'📖 Guide'},
@@ -2001,7 +1999,7 @@ function showStab(id,btn){
   btn.classList.add('active');document.getElementById('stab-'+id).style.display='block';
   closeStab();  /* collapse list; symbol stays visible so user can tap again to pick another */
   renderSettings();
-  if(id==='monitoring')loadMonitoring();
+  if(id==='monitoring'){ loadMonitoring(); renderSummaries(); }
 }
 
 function renderSettings(){
@@ -2011,7 +2009,7 @@ function renderSettings(){
     if(el)el.value=[biz.name,biz.tagline,biz.owner,biz.phone,biz.addr][i]||'';
   });
   renderUsers();renderRevList();renderPkgList();renderCostList();renderExpCatList();renderSubsList();renderLog();
-  if(document.getElementById('stab-monitoring')&&document.getElementById('stab-monitoring').style.display==='block')loadMonitoring();
+  if(document.getElementById('stab-monitoring')&&document.getElementById('stab-monitoring').style.display==='block'){ loadMonitoring(); renderSummaries(); }
   // Subscription alerts
   var alerts=(SETTINGS.subscriptions||[]).filter(s=>{if(!s.active||!s.next_due&&!s.nextDue)return false;return daysUntil(s.next_due||s.nextDue)<=(s.alert_days||s.alertDays||5);});
   var sa=document.getElementById('subs-alerts');
@@ -2036,7 +2034,7 @@ function renderUsers(){
 function openUserModal(editId){
   var u=editId?USERS.find(x=>x.id===editId):null;
   var perms=u?u.permissions:[];var isAdmin=perms==='all';
-  var ALL_TABS2=[{id:'dashboard',label:'Dashboard'},{id:'entry',label:'Daily Entry'},{id:'vouchers',label:'Vouchers'},{id:'reconcile',label:'Reconcile'},{id:'sales',label:'Sales Log'},{id:'summaries',label:'Summaries'},{id:'expenses',label:'Expenses'},{id:'assets',label:'Assets'},{id:'guide',label:'Guide'}];
+  var ALL_TABS2=[{id:'dashboard',label:'Dashboard'},{id:'entry',label:'Daily Entry'},{id:'vouchers',label:'Vouchers'},{id:'reconcile',label:'Reconcile'},{id:'sales',label:'Sales Log'},{id:'expenses',label:'Expenses'},{id:'assets',label:'Assets'},{id:'guide',label:'Guide'}];
   var tabsHtml='<div class="perm-grid">'+ALL_TABS2.map(t=>`<label class="perm-item"><input type="checkbox" class="perm-chk" value="${t.id}"${(Array.isArray(perms)&&perms.includes(t.id))?' checked':''}/> ${t.label}</label>`).join('')+'</div>';
   openModal((u?'Edit':'Add')+' User',`
     <div class="r2"><div class="fg"><label>Full Name *</label><input type="text" id="mu-name" value="${u?u.name:''}" placeholder="Full name"/></div><div class="fg"><label>ID Number</label><input type="text" id="mu-idnum" value="${u?u.id_number||'':''}" placeholder="e.g. ATT-002"/></div></div>
