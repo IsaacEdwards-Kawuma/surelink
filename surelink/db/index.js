@@ -85,6 +85,27 @@ async function logAction(userName, action, detail, ip = '') {
   `, [userName, action, detail || '', ip || '']);
 }
 
+// Next sequential user ID by role: ADM-001, ADM-002, ATT-001, ATT-002, ...
+function nextUserIdPrefix(role) {
+  const r = (role || '').toString().toLowerCase();
+  if (r === 'admin') return 'ADM';
+  if (r === 'attendant') return 'ATT';
+  return 'USR'; // other roles
+}
+
+async function nextUserId(role) {
+  const prefix = nextUserIdPrefix(role);
+  const pattern = prefix + '-%';
+  const row = await get(
+    "SELECT id FROM users WHERE id LIKE $1 ORDER BY id DESC LIMIT 1",
+    pattern
+  );
+  if (!row || !row.id) return prefix + '-001';
+  const match = row.id.match(/-(\d+)$/);
+  const num = match ? parseInt(match[1], 10) + 1 : 1;
+  return prefix + '-' + String(num).padStart(3, '0');
+}
+
 // Run multiple queries in a transaction; callback receives { get, all, run } using same client
 async function transaction(fn) {
   const client = await pool.connect();
@@ -125,6 +146,7 @@ const db = {
   saveSetting,
   logAction,
   transaction,
+  nextUserId,
 };
 
 module.exports = db;

@@ -212,7 +212,7 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
   if (!d.name || !d.pin) return res.status(400).json({ error: 'Name and PIN required' });
   if (String(d.pin).length !== 4) return res.status(400).json({ error: 'PIN must be 4 digits' });
   if (isWeakPin(d.pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
-  const id = uid();
+  const id = await db.nextUserId(d.role || 'attendant');
   const pinHash = bcrypt.hashSync(String(d.pin), 10);
   await db.run(`INSERT INTO users (id, name, id_number, role, pin_hash, phone, email, permissions, active) VALUES (?,?,?,?,?,?,?,?,1)`,
     id, d.name, d.idNumber || '', d.role || 'attendant', pinHash, d.phone || '', d.email || '', JSON.stringify(d.permissions || []));

@@ -84,9 +84,9 @@ router.post('/register', async (req, res) => {
     const existing = await db.get('SELECT id FROM users WHERE LOWER(name) = LOWER(?)', name.trim());
     if (existing) return res.status(409).json({ error: 'A user with that name already exists' });
 
-    const id = uid();
-    const pinHash = bcrypt.hashSync(String(pin), 10);
     const userRole = isFirstRun ? 'admin' : (role || 'attendant');
+    const id = await db.nextUserId(userRole);
+    const pinHash = bcrypt.hashSync(String(pin), 10);
     const userPerms = isFirstRun ? 'all' : JSON.stringify(permissions || []);
 
     await db.run('INSERT INTO users (id, name, id_number, role, pin_hash, phone, permissions, active) VALUES (?,?,?,?,?,?,?,1)',

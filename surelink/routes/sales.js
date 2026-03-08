@@ -132,9 +132,9 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
-// Attendants only: update transaction status (pending/cleared)
+// Admin only: view and clear transaction status (pending/cleared). Attendants maintain edits only.
 router.patch('/:id/transaction-status', requireAuth, async (req, res) => {
-  if (req.user.permissions === 'all') return res.status(403).json({ error: 'Only attendants can verify transaction status. Admins use Edit for other changes.' });
+  if (req.user.permissions !== 'all') return res.status(403).json({ error: 'Only admins can clear transaction status. Attendants use Edit to maintain the sales log.' });
   const status = (req.body.status || '').toLowerCase();
   if (status !== 'pending' && status !== 'cleared') return res.status(400).json({ error: 'Status must be "pending" or "cleared"' });
   const row = await db.get('SELECT id FROM sales WHERE id = ?', req.params.id);
