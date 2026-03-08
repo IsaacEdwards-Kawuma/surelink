@@ -20,7 +20,8 @@ img{max-width:100%;height:auto;}
 .pin-row{display:flex;gap:8px;justify-content:center;margin:12px 0;}
 .pin-dot{width:48px;height:56px;border-radius:10px;border:2px solid #E5E7EB;font-size:24px;font-weight:700;text-align:center;outline:none;color:#1E3A5F;}
 .pin-dot:focus{border-color:#0B6E6E;}
-.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:200px;margin:14px auto;}
+.pin-keypad{display:none;grid-template-columns:repeat(3,1fr);gap:8px;max-width:200px;margin:14px auto;}
+.pin-keypad.keypad-visible{display:grid;}
 .pin-keypad-btn{width:100%;aspect-ratio:1;max-height:56px;border-radius:12px;border:none;background:#1E3A5F;color:#fff;font-size:20px;font-weight:700;cursor:pointer;transition:background .15s;}
 .pin-keypad-btn:hover{background:#2d4a73;}
 .pin-keypad-btn:active{background:#0B6E6E;}
@@ -281,13 +282,14 @@ img{max-width:100%;height:auto;}
 
     <div class="fg" style="text-align:left"><label>Select Account</label><select id="login-user" style="font-size:13px"></select></div>
     <label style="font-size:11px;font-weight:700;color:#1E3A5F;display:block;margin-bottom:5px;text-align:left">4-Digit PIN</label>
-    <div class="pin-row">
-      <input class="pin-dot" type="password" maxlength="1" id="p0" oninput="pinNext(0)" onkeydown="pinBack(event,0)" autocomplete="off"/>
-      <input class="pin-dot" type="password" maxlength="1" id="p1" oninput="pinNext(1)" onkeydown="pinBack(event,1)" autocomplete="off"/>
-      <input class="pin-dot" type="password" maxlength="1" id="p2" oninput="pinNext(2)" onkeydown="pinBack(event,2)" autocomplete="off"/>
-      <input class="pin-dot" type="password" maxlength="1" id="p3" oninput="pinNext(3)" onkeydown="pinBack(event,3)" autocomplete="off"/>
-    </div>
-    <div class="pin-keypad">
+    <div id="login-pin-wrap" onfocusout="pinKeypadHideOnBlur(event)">
+      <div class="pin-row">
+        <input class="pin-dot" type="password" maxlength="1" id="p0" onfocus="pinKeypadShow()" oninput="pinNext(0)" onkeydown="pinBack(event,0)" autocomplete="off"/>
+        <input class="pin-dot" type="password" maxlength="1" id="p1" onfocus="pinKeypadShow()" oninput="pinNext(1)" onkeydown="pinBack(event,1)" autocomplete="off"/>
+        <input class="pin-dot" type="password" maxlength="1" id="p2" onfocus="pinKeypadShow()" oninput="pinNext(2)" onkeydown="pinBack(event,2)" autocomplete="off"/>
+        <input class="pin-dot" type="password" maxlength="1" id="p3" onfocus="pinKeypadShow()" oninput="pinNext(3)" onkeydown="pinBack(event,3)" autocomplete="off"/>
+      </div>
+      <div class="pin-keypad" id="login-pin-keypad">
       <button type="button" class="pin-keypad-btn" onclick="pinKeypadDigit(1)">1</button>
       <button type="button" class="pin-keypad-btn" onclick="pinKeypadDigit(2)">2</button>
       <button type="button" class="pin-keypad-btn" onclick="pinKeypadDigit(3)">3</button>
@@ -300,6 +302,7 @@ img{max-width:100%;height:auto;}
       <button type="button" class="pin-keypad-btn keypad-back" onclick="pinKeypadBack()">⌫</button>
       <button type="button" class="pin-keypad-btn" onclick="pinKeypadDigit(0)">0</button>
       <button type="button" class="pin-keypad-btn" style="visibility:hidden" disabled>·</button>
+    </div>
     </div>
     <div id="login-err" style="color:#C0392B;font-size:11px;min-height:16px;margin-bottom:8px;text-align:center"></div>
     <button class="btn btn-primary btn-full" style="padding:12px;font-size:14px" onclick="doLogin()" id="login-btn">Sign In →</button>
@@ -878,6 +881,7 @@ async function checkFirstRun(){
       document.getElementById('login-panel').style.display='block';
       document.getElementById('register-panel').style.display='none';
       document.getElementById('forgot-pin-panel').style.display='none';
+      pinKeypadHide();
       await loadLoginUsers();
       setTimeout(()=>document.getElementById('p0').focus(),200);
     }
@@ -885,6 +889,7 @@ async function checkFirstRun(){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
     document.getElementById('forgot-pin-panel').style.display='none';
+    pinKeypadHide();
     if(connDot)connDot.classList.add('off');
     if(connEl)connEl.textContent='Cannot connect. Tap Retry.';
     if(retryBtn)retryBtn.style.display='inline-block';
@@ -916,6 +921,22 @@ function pinNext(i){ var v=document.getElementById('p'+i).value; if(v&&i<3)docum
 function pinBack(e,i){ if(e.key==='Backspace'&&!document.getElementById('p'+i).value&&i>0)document.getElementById('p'+(i-1)).focus(); }
 function getPin(){ return [0,1,2,3].map(i=>document.getElementById('p'+i).value).join(''); }
 
+function pinKeypadShow(){
+  var k=document.getElementById('login-pin-keypad');
+  if(k)k.classList.add('keypad-visible');
+}
+function pinKeypadHide(){
+  var k=document.getElementById('login-pin-keypad');
+  if(k)k.classList.remove('keypad-visible');
+}
+function pinKeypadHideOnBlur(e){
+  var wrap=document.getElementById('login-pin-wrap');
+  var next=e.relatedTarget;
+  setTimeout(function(){
+    var active=document.activeElement;
+    if(!wrap||!wrap.contains(active))pinKeypadHide();
+  },0);
+}
 function pinKeypadDigit(d){
   for(var i=0;i<4;i++){
     var el=document.getElementById('p'+i);
@@ -957,6 +978,7 @@ function backToLogin(){
   document.getElementById('forgot-pin-panel').style.display='none';
   document.getElementById('login-panel').style.display='block';
   document.getElementById('login-err').textContent='';
+  pinKeypadHide();
 }
 
 var FORGOT_RESET_CODE='';
@@ -1013,6 +1035,7 @@ async function doLogin(){
   btn.innerHTML='<span class="spinner"></span> Signing in...'; btn.disabled=true;
   try{
     var r=await POST('/auth/login',{userId,pin});
+    pinKeypadHide();
     enterApp(r.token, r.user);
   }catch(e){
     document.getElementById('login-err').textContent=e.message||'Login failed';
