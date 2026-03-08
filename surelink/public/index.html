@@ -759,6 +759,7 @@ img{max-width:100%;height:auto;}
         <div style="color:#6B7280">Loading…</div>
       </div>
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid #E5E7EB">
+        <div id="mon-expenses-logged" style="margin-bottom:16px;padding:12px 14px;background:#374151;color:#fff;border-radius:12px;font-size:12px"><span style="opacity:.9">Total Expenses Logged</span> <strong id="mon-exp-total">—</strong> <span id="mon-exp-records" style="opacity:.85"></span></div>
         <div class="card-title" style="margin-bottom:14px">📆 Business Summaries</div>
         <div class="card" style="margin-bottom:14px"><div class="card-title">📆 Monthly Summary</div><div style="overflow-x:auto"><table class="tbl" id="monthly-tbl"></table></div></div>
         <div class="card" style="margin-bottom:14px"><div class="card-title">📊 Weekly Breakdown</div><div style="overflow-x:auto"><table class="tbl" id="wk-tbl"></table></div></div>
@@ -1646,7 +1647,6 @@ function renderDash(){
     {l:'Best Single Day',v:fmt(best)+' UGX',s:'All-time',bg:'#0B6E6E'},
     {l:'Avg Revenue/Day',v:fmt(avg)+' UGX',s:td+' trading days',bg:'#6C3483'},
     {l:'Downtime Days',v:dd,s:'Closed days',bg:'#E67E22'},
-    {l:'Total Expenses Logged',v:fmt(expTotal)+' UGX',s:EXPENSES.length+' records',bg:'#374151'},
   ].map(k=>`<div class="kpi" style="background:${k.bg}"><div class="kl">${k.l}</div><div class="kv">${k.v}</div><div class="ks">${k.s}</div></div>`).join('');
   var wk=wkMap(),maxR=Math.max(...Object.values(wk).map(d=>d.wifi+d.chg),1);
   document.getElementById('weekly-bars').innerHTML=Object.entries(wk).map(([wn,d])=>{
@@ -1819,6 +1819,9 @@ function renderRecStatus(){
 // SUMMARIES
 // ═══════════════════════════════════════════════════════════════════
 function renderSummaries(){
+  var expTotal=EXPENSES.reduce((a,e)=>a+(e.amount||e.amt||0),0);
+  var tel=document.getElementById('mon-exp-total');if(tel)tel.textContent=fmt(expTotal)+' UGX';
+  var rec=document.getElementById('mon-exp-records');if(rec)rec.textContent='('+EXPENSES.length+' records)';
   var months={};
   SALES.forEach(r=>{
     var m=getMonth(r.date);if(!months[m])months[m]={wifi:0,chg:0,exp:0,days:0};
