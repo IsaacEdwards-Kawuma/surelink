@@ -17,20 +17,39 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json(parseSaleRow(row));
 });
 
+function todayStr() {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+
+async function nextEntryRef(dateStr) {
+  const prefix = 'SL-' + (dateStr || '').replace(/-/g, '') + '-';
+  const row = await db.get(
+    "SELECT entry_ref FROM sales WHERE entry_ref LIKE ? ORDER BY entry_ref DESC LIMIT 1",
+    prefix + '%'
+  );
+  if (!row || !row.entry_ref) return prefix + '001';
+  const num = parseInt(row.entry_ref.replace(prefix, ''), 10) || 0;
+  return prefix + String(num + 1).padStart(3, '0');
+}
+
 router.post('/', requireAuth, async (req, res) => {
   const d = req.body;
   if (!d.date) return res.status(400).json({ error: 'Date required' });
+  const today = todayStr();
+  if (d.date > today) return res.status(400).json({ error: 'Cannot create entry for a future date. Use today or a past date.' });
 
   const exists = await db.get('SELECT id FROM sales WHERE date = ?', d.date);
   if (exists) return res.status(409).json({ error: 'Entry for ' + d.date + ' already exists' });
 
   const id = uid();
+  const entryRef = await nextEntryRef(d.date);
   await db.run(`
     INSERT INTO sales
       (id, date, week, attendant, total_rev, wifi, charging, expenses,
        exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data,
-       entered_by, entered_at, edit_history)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       entered_by, entered_at, edit_history, transaction_status, entry_ref)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `,
     id, d.date, d.week || '', d.att || '',
     d.totalRev || 0, d.wifi || 0, d.charging || 0, d.expenses || 0,
@@ -38,7 +57,7 @@ router.post('/', requireAuth, async (req, res) => {
     d.notes || '', d.downtime ? 1 : 0,
     JSON.stringify(d.revenueData || {}),
     req.user.name, new Date().toLocaleString('en-GB'),
-    '[]'
+    '[]', 'pending', entryRef
   );
 
   await db.logAction(req.user.name, 'Daily Entry', `Date: ${d.date} | Revenue: ${d.totalRev || 0} UGX`, req.ip);
@@ -113,6 +132,18 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
+// Attendants only: update transaction status (pending/cleared)
+router.patch('/:id/transaction-status', requireAuth, async (req, res) => {
+  if (req.user.permissions === 'all') return res.status(403).json({ error: 'Only attendants can verify transaction status. Admins use Edit for other changes.' });
+  const status = (req.body.status || '').toLowerCase();
+  if (status !== 'pending' && status !== 'cleared') return res.status(400).json({ error: 'Status must be "pending" or "cleared"' });
+  const row = await db.get('SELECT id FROM sales WHERE id = ?', req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  await db.run('UPDATE sales SET transaction_status = ? WHERE id = ?', status, req.params.id);
+  const updated = parseSaleRow(await db.get('SELECT * FROM sales WHERE id = ?', req.params.id));
+  res.json(updated);
+});
+
 router.delete('/:id', requireAuth, requireAdmin, async (req, res) => {
   const row = await db.get('SELECT * FROM sales WHERE id = ?', req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
@@ -135,6 +166,8 @@ function parseSaleRow(row) {
     expCat: row.exp_cat, expSub: row.exp_sub,
     notes: row.notes, downtime: !!row.downtime,
     revenueData, editHistory,
+    transactionStatus: row.transaction_status || 'pending',
+    entryRef: row.entry_ref || '',
     enteredBy: row.entered_by, enteredAt: row.entered_at,
     editedBy: row.edited_by, editedAt: row.edited_at
   };

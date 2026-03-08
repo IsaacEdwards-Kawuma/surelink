@@ -30,29 +30,41 @@ async function main() {
 
   -- SALES
   CREATE TABLE IF NOT EXISTS sales (
-    id           TEXT PRIMARY KEY,
-    date         TEXT NOT NULL UNIQUE,
-    week         TEXT,
-    attendant    TEXT,
-    total_rev     DOUBLE PRECISION DEFAULT 0,
-    wifi         DOUBLE PRECISION DEFAULT 0,
-    charging     DOUBLE PRECISION DEFAULT 0,
-    expenses     DOUBLE PRECISION DEFAULT 0,
-    exp_desc     TEXT,
-    exp_cat      TEXT,
-    exp_sub      TEXT,
-    notes        TEXT,
-    downtime     INTEGER DEFAULT 0,
-    revenue_data TEXT DEFAULT '{}',
-    entered_by   TEXT,
-    entered_at   TEXT,
-    edited_by    TEXT,
-    edited_at    TEXT,
-    edit_history TEXT DEFAULT '[]',
-    created_at   TIMESTAMPTZ DEFAULT NOW()
+    id                 TEXT PRIMARY KEY,
+    date               TEXT NOT NULL UNIQUE,
+    week               TEXT,
+    attendant          TEXT,
+    total_rev          DOUBLE PRECISION DEFAULT 0,
+    wifi               DOUBLE PRECISION DEFAULT 0,
+    charging           DOUBLE PRECISION DEFAULT 0,
+    expenses           DOUBLE PRECISION DEFAULT 0,
+    exp_desc           TEXT,
+    exp_cat            TEXT,
+    exp_sub            TEXT,
+    notes              TEXT,
+    downtime           INTEGER DEFAULT 0,
+    revenue_data       TEXT DEFAULT '{}',
+    entered_by         TEXT,
+    entered_at         TEXT,
+    edited_by          TEXT,
+    edited_at          TEXT,
+    edit_history       TEXT DEFAULT '[]',
+    transaction_status TEXT DEFAULT 'pending',
+    entry_ref          TEXT,
+    created_at         TIMESTAMPTZ DEFAULT NOW()
   );
   CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);
   CREATE INDEX IF NOT EXISTS idx_sales_week ON sales(week);
+  CREATE INDEX IF NOT EXISTS idx_sales_entry_ref ON sales(entry_ref);
+
+  -- Migration: add new sales columns for existing DBs
+  try {
+    const hasStatus = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'transaction_status'");
+    if (!hasStatus) await db.query("ALTER TABLE sales ADD COLUMN transaction_status TEXT DEFAULT 'pending'");
+    const hasRef = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales' AND column_name = 'entry_ref'");
+    if (!hasRef) await db.query("ALTER TABLE sales ADD COLUMN entry_ref TEXT");
+    await db.query("UPDATE sales SET entry_ref = 'SL-' || REPLACE(date, '-', '') || '-001' WHERE entry_ref IS NULL OR entry_ref = ''");
+  } catch (e) { console.log('   (sales columns migration skipped or already applied)'); }
 
   -- VOUCHERS
   CREATE TABLE IF NOT EXISTS vouchers (

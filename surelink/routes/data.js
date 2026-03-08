@@ -326,12 +326,13 @@ router.post('/backup/restore', requireAuth, requireAdmin, async (req, res) => {
 
       for (const r of sales) {
         await tx.run(
-          `INSERT INTO sales (id, date, week, attendant, total_rev, wifi, charging, expenses, exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data, entered_by, entered_at, edited_by, edited_at, edit_history)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sales (id, date, week, attendant, total_rev, wifi, charging, expenses, exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data, entered_by, entered_at, edited_by, edited_at, edit_history, transaction_status, entry_ref)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           r.id, r.date, r.week || '', r.attendant || '', r.total_rev ?? 0, r.wifi ?? 0, r.charging ?? 0, r.expenses ?? 0,
           r.exp_desc || '', r.exp_cat || '', r.exp_sub || '', r.notes || '', r.downtime ? 1 : 0,
           typeof r.revenue_data === 'string' ? r.revenue_data : JSON.stringify(r.revenue_data || {}),
-          r.entered_by || '', r.entered_at || '', r.edited_by || '', r.edited_at || '', r.edit_history || '[]'
+          r.entered_by || '', r.entered_at || '', r.edited_by || '', r.edited_at || '', r.edit_history || '[]',
+          r.transaction_status || 'pending', r.entry_ref || r.entryRef || ''
         );
       }
       for (const r of vouchers) {
