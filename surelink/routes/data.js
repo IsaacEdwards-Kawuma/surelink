@@ -123,14 +123,20 @@ router.delete('/assets/:id', requireAuth, requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// MONITORING (admin only) — database & server status
+// MONITORING (admin only) — database & server status + extra metrics
 router.get('/monitoring', requireAuth, requireAdmin, async (req, res) => {
   let dbStatus = 'disconnected';
   let dbError = null;
+  let dbPingMs = null;
   const tables = {};
+  const summary = { vouchersUnused: 0, vouchersSold: 0, logLast24h: 0 };
+
   try {
+    const pingStart = Date.now();
     await db.get('SELECT 1');
+    dbPingMs = Date.now() - pingStart;
     dbStatus = 'connected';
+
     const names = ['users', 'sales', 'vouchers', 'expenses', 'assets', 'admin_log', 'settings', 'subscriptions'];
     for (const t of names) {
       try {
@@ -138,20 +144,50 @@ router.get('/monitoring', requireAuth, requireAdmin, async (req, res) => {
         tables[t] = parseInt(r?.c || 0, 10);
       } catch (_) { tables[t] = null; }
     }
+
+    try {
+      const vUnused = await db.get("SELECT COUNT(*) as c FROM vouchers WHERE status = 'Unused'");
+      const vSold = await db.get("SELECT COUNT(*) as c FROM vouchers WHERE status = 'Sold'");
+      summary.vouchersUnused = parseInt(vUnused?.c || 0, 10);
+      summary.vouchersSold = parseInt(vSold?.c || 0, 10);
+    } catch (_) {}
+
+    try {
+      const log24 = await db.get("SELECT COUNT(*) as c FROM admin_log WHERE timestamp > NOW() - INTERVAL '24 hours'");
+      summary.logLast24h = parseInt(log24?.c || 0, 10);
+    } catch (_) {}
   } catch (e) {
     dbError = e.message || 'Unknown error';
   }
+
   const mem = process.memoryUsage();
+  const pool = db.pool || {};
+  const poolStats = {
+    total: pool.totalCount != null ? pool.totalCount : null,
+    idle: pool.idleCount != null ? pool.idleCount : null,
+    waiting: pool.waitingCount != null ? pool.waitingCount : null
+  };
+
   res.json({
     time: new Date().toISOString(),
-    database: { status: dbStatus, error: dbError, tables },
+    database: {
+      status: dbStatus,
+      error: dbError,
+      pingMs: dbPingMs,
+      tables,
+      summary
+    },
     server: {
       uptimeSeconds: Math.floor((Date.now() - SERVER_STARTED_AT) / 1000),
       nodeVersion: process.version,
+      platform: process.platform,
+      env: process.env.NODE_ENV || 'development',
+      pool: poolStats,
       memory: {
         heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
         heapTotalMB: Math.round(mem.heapTotal / 1024 / 1024),
-        rssMB: Math.round(mem.rss / 1024 / 1024)
+        rssMB: Math.round(mem.rss / 1024 / 1024),
+        externalMB: mem.external != null ? Math.round(mem.external / 1024 / 1024) : null
       }
     }
   });
