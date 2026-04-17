@@ -155,16 +155,16 @@ So it only works when the page is served from the same origin as the API. For Ve
 3. Configure:
    - **Framework Preset:** Other (or leave default).
    - **Root Directory:** `surelink` (so Vercel uses the folder that contains `public`).
-   - **Build Command:** leave empty, or if you use Option B above, use your replace script.
-   - **Output Directory:** `public`  
-     (so Vercel serves the contents of `public`, including `index.html`).
-   - **Install Command:** `npm install` (optional if you have no build deps).
+   - **Build / output:** The repo includes `vercel.json` — build writes `public/runtime-config.js` and output is **`public`**.
+   - **Install Command:** leave default (`npm install` from `vercel.json`).
 
-4. **Environment variables (Vercel):**
-   - Only needed if you use Option B (build-time API URL). Example:
-   - **Key:** `NEXT_PUBLIC_API_URL` or `VITE_API_URL`  
-   - **Value:** `https://surelink-xxxx.onrender.com/api`  
-   (Use the same name your build script reads.)
+4. **Environment variables (Vercel) — required for API connection**
+
+   | Key | Value | Notes |
+   |-----|--------|--------|
+   | **`SURELINK_API_ORIGIN`** | `https://YOUR-SERVICE.onrender.com` | **No** `/api` suffix. Same URL you open for the Render app (without path). Production + Preview: add for **Production** and **Preview** if you use preview URLs. |
+
+   If this is missing, the UI falls back to `https://surelink.onrender.com` inside `index.html`, which is **wrong** if your Render service has another name — login will show “Cannot connect”.
 
 5. Click **Deploy**. Vercel will give you a URL like `https://surelink-xxx.vercel.app`.
 
@@ -194,7 +194,8 @@ So it only works when the page is served from the same origin as the API. For Ve
 
 | Variable | When to use | Example |
 |----------|---------------------|----------|
-| `NEXT_PUBLIC_API_URL` or `VITE_API_URL` | Only if you use a build step that injects API URL into HTML/JS | `https://surelink-xxxx.onrender.com/api` |
+| **`SURELINK_API_ORIGIN`** | **Set on every Vercel project** that serves the UI while the API is on Render | `https://surelink-xxxx.onrender.com` (no `/api`) |
+| `NEXT_PUBLIC_API_URL` / `VITE_API_URL` | Legacy / optional aliases read by `scripts/vercel-inject-api.js` | Same as origin, without path, or with `/api` stripped automatically |
 
 ---
 
@@ -206,14 +207,17 @@ So it only works when the page is served from the same origin as the API. For Ve
 2. **Vercel auto-detects “Node” because of `package.json`**  
    It may try to run `server.js` as serverless and fail, or ignore `public/`. This repo includes **`vercel.json`** with `framework: null`, `outputDirectory: public`, and a tiny build step so the deployment is **static files from `public/`** only. The API stays on Render.
 
-3. **Production branch**  
+3. **`SURELINK_API_ORIGIN` (fixes “backend not connecting”)**  
+   On Vercel → **Settings → Environment Variables**, set **`SURELINK_API_ORIGIN`** to your Render web service URL, e.g. `https://surelink.onrender.com` (no `/api`). Apply to **Production** and **Preview**. Redeploy after saving. The build writes `public/runtime-config.js`; without this, the SPA may call the wrong host.
+
+4. **Production branch**  
    Under Git → check **Production Branch** is the branch you push to (e.g. `main`). Preview deployments use other branches.
 
-4. **Stale UI after a “successful” deploy**  
-   The service worker caches `index.html`. After a release we bump `CACHE_NAME` in `public/sw.js` so clients fetch the new shell. Hard refresh (Ctrl+F5) or clear site data if you still see an old version.
+5. **Stale UI after a “successful” deploy**  
+   On `*.vercel.app`, the app **does not register** the service worker (it was caching old `index.html`). `vercel.json` also sets short cache headers for `/` and `index.html`. Hard refresh once after changing env vars.
 
-5. **CORS**  
-   Set Render `ALLOWED_ORIGINS` to the **exact** Vercel URL (including `https://` and no trailing slash unless you use one consistently). Preview URLs like `https://surelink-git-main-xxx.vercel.app` are different from production — add each if you test previews.
+6. **CORS on Render**  
+   Leave **`ALLOWED_ORIGINS` empty** to allow all origins (simplest while testing). If you set it, use comma-separated exact origins, e.g. `https://your-app.vercel.app,https://your-app-git-main-xxx.vercel.app`. The server also allows any `*.vercel.app` when the list is non-empty but your origin is not listed — still set explicit URLs if you lock CORS down later.
 
 ---
 

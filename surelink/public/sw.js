@@ -1,5 +1,5 @@
 // SureLink WiFi Manager — Service Worker (offline shell + banner)
-const CACHE_NAME = 'surelink-v2';
+const CACHE_NAME = 'surelink-v3';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

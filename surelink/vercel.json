@@ -2,6 +2,20 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "npm install --omit=dev --ignore-scripts --no-audit --no-fund",
-  "buildCommand": "node -e \"require('fs').accessSync('public/index.html'); console.log('Static output: public/')\"",
-  "outputDirectory": "public"
+  "buildCommand": "node scripts/vercel-inject-api.js && node -e \"require('fs').accessSync('public/index.html'); console.log('OK: public/index.html')\"",
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/runtime-config.js",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    }
+  ]
 }

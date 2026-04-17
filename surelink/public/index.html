@@ -851,17 +851,23 @@ html[data-theme="dark"] #edit-mode-banner{background:rgba(201,168,76,.25);border
   </div><!-- #main-column -->
 </div><!-- #app-shell -->
 
+<script src="/runtime-config.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
-// API LAYER — backend URL is set here (same app works on Render, Vercel, custom domain)
-// If your frontend is at surelink-manager.net but the API runs elsewhere (e.g. Render),
-// set API_BASE to that backend URL (e.g. 'https://surelink-wifi-manager.onrender.com').
+// API LAYER — backend URL (Render, etc.)
+// - Same host as API (e.g. app on Render): uses /api
+// - Vercel / other host: uses API_BASE + /api
+// - Vercel: set env SURELINK_API_ORIGIN at build time → public/runtime-config.js (see scripts/vercel-inject-api.js)
 // ═══════════════════════════════════════════════════════════════════
 var RENDER_APP_URL = 'https://surelink-manager.net';
-// Set this to your actual Render (or backend) URL — copy from Render dashboard, e.g. https://surelink-xxxx.onrender.com
-// If you get 404: wait 30–60s for free-tier wake-up, or check Render Root Directory is "surelink" and the service is running.
-var API_BASE = 'https://surelink.onrender.com';
-var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
+var _rtOrigin = (typeof window.__SURELINK_API_ORIGIN__ === 'string' && window.__SURELINK_API_ORIGIN__.replace(/\/+$/,'').length > 0)
+  ? window.__SURELINK_API_ORIGIN__.replace(/\/+$/,'').replace(/\/api$/i,'')
+  : '';
+// Fallback when runtime-config.js is empty (local dev or before Vercel env is set):
+var API_BASE = _rtOrigin || 'https://surelink.onrender.com';
+var API = (window.location.hostname === 'surelink.onrender.com')
+  ? '/api'
+  : (String(API_BASE || RENDER_APP_URL).replace(/\/+$/,'') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
 
@@ -1068,7 +1074,7 @@ async function loadLoginUsers(){
     var retryBtn=document.getElementById('conn-retry');if(retryBtn)retryBtn.style.display='none';
   }catch(e){
     sel.innerHTML='<option value="">— Cannot load accounts —</option>';
-    var errMsg='Cannot reach server. Check API_BASE in index.html matches your backend URL, or open the app from the same host as the API.';
+    var errMsg='Cannot reach server at '+API+'. On Vercel set env SURELINK_API_ORIGIN to your Render URL (no /api), redeploy, or open the app from the same host as the API.';
     if(connEl)connEl.textContent=errMsg;
     var ct2b=document.getElementById('conn-text2');if(ct2b)ct2b.textContent=errMsg;
   }
@@ -2778,7 +2784,15 @@ function renderGuide(){
 // ═══════════════════════════════════════════════════════════════════
 (async()=>{
   applyTheme();
-  if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('/sw.js'); }catch(_){} }
+  // Vercel: never register SW — it caches index.html and makes redeploys look "stuck"; CDN already edge-caches.
+  if(/\.vercel\.app$/i.test(location.hostname)&&'serviceWorker' in navigator){
+    try{
+      var regs=await navigator.serviceWorker.getRegistrations();
+      regs.forEach(function(r){ r.unregister(); });
+    }catch(_){}
+  }else if('serviceWorker' in navigator){
+    try{ await navigator.serviceWorker.register('/sw.js'); }catch(_){}
+  }
   await checkConn();
   await checkFirstRun();   // shows register panel if no users, login panel if users exist
   document.addEventListener('keydown',function(e){
