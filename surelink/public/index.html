@@ -1562,9 +1562,9 @@ function onExpenseCatChange(i){
   var catId=(card.querySelector('.exp-cat')||{}).value||'';
   var cat=(SETTINGS.expense_categories||[]).find(function(c){return c.id===catId;});
   var subEl=card.querySelector('.exp-sub');
-  if(subEl)subEl.innerHTML=cat?(cat.subs||[]).map(function(s){return '<option>'+s+'</option>';}).join('');
+  if(subEl)subEl.innerHTML=cat?(cat.subs||[]).map(function(s){return '<option>'+s+'</option>';}).join(''):'';
   var aw=card.querySelector('.exp-asset-wrap');
-  if(aw)aw.style.display=cat&&String(cat.name||'').toLowerCase().indexOf('capital')>=0?'block':'none';
+  if(aw)aw.style.display=(cat&&String(cat.name||'').toLowerCase().indexOf('capital')>=0)?'block':'none';
 }
 function toggleExpenseAsset(i){
   var card=document.querySelector('.expense-row-card[data-exp-idx="'+i+'"]');if(!card)return;
