@@ -206,7 +206,7 @@ router.get('/monitoring', requireAuth, requireAdmin, async (req, res) => {
 
 // USERS (admin only)
 router.get('/users', requireAuth, requireAdmin, async (req, res) => {
-  const rows = await db.all('SELECT id, name, id_number, role, phone, email, permissions, active FROM users ORDER BY name');
+  const rows = await db.all('SELECT id, name, id_number, role, phone, email, permissions, active, weekly_target FROM users ORDER BY name');
   res.json(rows.map(u => ({ ...u, permissions: safeJSON(u.permissions) })));
 });
 
@@ -225,8 +225,11 @@ router.post('/users', requireAuth, requireAdmin, async (req, res) => {
   if (isWeakPin(d.pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
   const id = await db.nextUserId(d.role || 'attendant');
   const pinHash = bcrypt.hashSync(String(d.pin), 10);
+  const weeklyTarget = Math.max(0, Number(d.weeklyTarget) || 0);
+  const idNumber = (d.idNumber && String(d.idNumber).trim()) ? String(d.idNumber).trim() : id;
   await db.run(`INSERT INTO users (id, name, id_number, role, pin_hash, phone, email, permissions, active) VALUES (?,?,?,?,?,?,?,?,1)`,
-    id, d.name, d.idNumber || '', d.role || 'attendant', pinHash, d.phone || '', d.email || '', JSON.stringify(d.permissions || []));
+    id, d.name, idNumber, d.role || 'attendant', pinHash, d.phone || '', d.email || '', JSON.stringify(d.permissions || []));
+  try { await db.run('UPDATE users SET weekly_target=? WHERE id=?', weeklyTarget, id); } catch (_) {}
   await db.logAction(req.user.name, 'User Added', d.name, req.ip);
   res.status(201).json({ id, name: d.name });
 });
@@ -237,9 +240,89 @@ router.put('/users/:id', requireAuth, requireAdmin, async (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (d.pin && isWeakPin(d.pin)) return res.status(400).json({ error: 'PIN too easy (e.g. 1234, 0000). Choose a stronger PIN.' });
   const pinHash = d.pin ? bcrypt.hashSync(String(d.pin), 10) : user.pin_hash;
-  await db.run(`UPDATE users SET name=?, id_number=?, role=?, pin_hash=?, phone=?, email=?, permissions=?, updated_at=NOW() WHERE id=?`,
-    d.name || user.name, d.idNumber ?? user.id_number, d.role || user.role, pinHash, d.phone ?? user.phone, d.email ?? user.email, JSON.stringify(d.permissions ?? safeJSON(user.permissions)), req.params.id);
+  const weeklyTarget = d.weeklyTarget != null ? Math.max(0, Number(d.weeklyTarget) || 0) : (Number(user.weekly_target) || 0);
+  const idNumber = (d.idNumber != null ? String(d.idNumber || '').trim() : (user.id_number || '')).trim() || user.id;
+  await db.run(`UPDATE users SET name=?, id_number=?, role=?, pin_hash=?, phone=?, email=?, permissions=?, weekly_target=?, updated_at=NOW() WHERE id=?`,
+    d.name || user.name, idNumber, d.role || user.role, pinHash, d.phone ?? user.phone, d.email ?? user.email, JSON.stringify(d.permissions ?? safeJSON(user.permissions)), weeklyTarget, req.params.id);
   await db.logAction(req.user.name, 'User Updated', d.name || user.name, req.ip);
+  res.json({ ok: true });
+});
+
+// DAILY CASH RECONCILIATION (admin) — cashier book + cash-at-hand vs system totals
+router.get('/reconciliations/:date', requireAuth, requireAdmin, async (req, res) => {
+  const date = String(req.params.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date (YYYY-MM-DD)' });
+
+  const sales = await db.all('SELECT attendant, total_rev, transaction_status FROM sales WHERE date = $1', date);
+  const sysTotal = sales.reduce((a, r) => a + (Number(r.total_rev) || 0), 0);
+  const pendingCount = sales.filter(r => (r.transaction_status || 'pending') === 'pending').length;
+  const clearedCount = sales.filter(r => (r.transaction_status || 'pending') === 'cleared').length;
+
+  const byAtt = {};
+  for (const r of sales) {
+    const k = (r.attendant || '').trim() || '—';
+    byAtt[k] = (byAtt[k] || 0) + (Number(r.total_rev) || 0);
+  }
+
+  const row = await db.get('SELECT * FROM daily_reconciliations WHERE date = $1', date);
+  res.json({
+    date,
+    systemTotal: sysTotal,
+    byAttendant: Object.entries(byAtt).map(([attendant, total]) => ({ attendant, total })).sort((a, b) => b.total - a.total),
+    counts: { totalEntries: sales.length, pending: pendingCount, cleared: clearedCount },
+    reconciliation: row ? {
+      date: row.date,
+      cashierName: row.cashier_name || '',
+      cashierBookTotal: Number(row.cashier_book_total) || 0,
+      cashAtHand: Number(row.cash_at_hand) || 0,
+      notes: row.notes || '',
+      status: row.status || 'open',
+      reconciledBy: row.reconciled_by || '',
+      reconciledAt: row.reconciled_at || ''
+    } : null
+  });
+});
+
+router.put('/reconciliations/:date', requireAuth, requireAdmin, async (req, res) => {
+  const date = String(req.params.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date (YYYY-MM-DD)' });
+  const d = req.body || {};
+  const cashierName = String(d.cashierName || '').trim();
+  const cashierBookTotal = Math.max(0, Number(d.cashierBookTotal) || 0);
+  const cashAtHand = Math.max(0, Number(d.cashAtHand) || 0);
+  const notes = String(d.notes || '').trim();
+
+  await db.run(
+    `INSERT INTO daily_reconciliations (date, cashier_name, cashier_book_total, cash_at_hand, notes, status, updated_at)
+     VALUES ($1,$2,$3,$4,$5,'open',NOW())
+     ON CONFLICT(date) DO UPDATE SET
+       cashier_name = EXCLUDED.cashier_name,
+       cashier_book_total = EXCLUDED.cashier_book_total,
+       cash_at_hand = EXCLUDED.cash_at_hand,
+       notes = EXCLUDED.notes,
+       status = 'open',
+       updated_at = NOW()`,
+    date, cashierName, cashierBookTotal, cashAtHand, notes
+  );
+  await db.logAction(req.user.name, 'Reconciliation Updated', `Date: ${date} | Book: ${cashierBookTotal} | Cash: ${cashAtHand}`, req.ip);
+  res.json({ ok: true });
+});
+
+router.post('/reconciliations/:date/close', requireAuth, requireAdmin, async (req, res) => {
+  const date = String(req.params.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date (YYYY-MM-DD)' });
+
+  const row = await db.get('SELECT * FROM daily_reconciliations WHERE date = $1', date);
+  if (!row) return res.status(404).json({ error: 'No reconciliation saved for this date yet' });
+
+  await db.transaction(async (tx) => {
+    await tx.run("UPDATE sales SET transaction_status='cleared' WHERE date = $1", date);
+    await tx.run(
+      `UPDATE daily_reconciliations SET status='closed', reconciled_by=$2, reconciled_at=$3, updated_at=NOW() WHERE date=$1`,
+      date, req.user.name, new Date().toLocaleString('en-GB')
+    );
+  });
+  await db.logAction(req.user.name, 'Reconciliation Closed', `Date: ${date} | All entries marked cleared`, req.ip);
   res.json({ ok: true });
 });
 

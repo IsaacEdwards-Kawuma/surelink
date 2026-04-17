@@ -678,6 +678,48 @@ html[data-theme="dark"] #edit-mode-banner{background:rgba(201,168,76,.25);border
   </div>
 </div>
 
+<!-- RECONCILIATION (cashier vs attendant/system) -->
+<div id="page-reconcile" class="page">
+  <div class="card">
+    <div class="card-title" style="font-size:15px;margin-bottom:3px">🧾 Daily Cash Reconciliation</div>
+    <p style="font-size:11px;color:#6B7280;margin-bottom:18px">
+      Cashier records totals from books and cash-at-hand. System totals come from attendants’ Daily Entries.
+    </p>
+    <div class="r2">
+      <div class="fg"><label>Date</label><input type="date" id="rc-date"/></div>
+      <div class="fg"><label>Cashier name</label><input type="text" id="rc-cashier" placeholder="e.g. Mary"/></div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Cashier book total (UGX)</label><input type="number" id="rc-book" placeholder="0"/></div>
+      <div class="fg"><label>Cash at hand (UGX)</label><input type="number" id="rc-cash" placeholder="0"/></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="rc-notes" rows="3" placeholder="Any explanation for differences..."></textarea></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-teal" onclick="loadRecon()">Refresh</button>
+      <button class="btn btn-primary" onclick="saveRecon()">Save reconciliation</button>
+      <button class="btn btn-green" onclick="closeRecon()">Close &amp; mark entries Cleared</button>
+    </div>
+  </div>
+
+  <div class="r2" style="margin-top:14px">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">System totals (from attendants)</div>
+      <div id="rc-system" style="font-size:22px;font-weight:800;color:#1E3A5F">—</div>
+      <div id="rc-counts" style="font-size:11px;color:#6B7280;margin-top:6px">—</div>
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">Variance</div>
+      <div id="rc-variance" style="font-size:22px;font-weight:800;color:#0B6E6E">—</div>
+      <div style="font-size:10px;color:#6B7280;margin-top:6px">Variance = cash-at-hand − system total</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">Breakdown by attendant</div>
+    <div style="overflow-x:auto"><table class="tbl" id="rc-byatt"></table></div>
+  </div>
+</div>
+
 <!-- EXPENSES -->
 <div id="page-expenses" class="page">
   <div class="r2" style="margin-bottom:14px">
@@ -1356,6 +1398,7 @@ var ALL_TABS=[
   {id:'entry',label:'➕ Daily Entry',short:'➕'},
   {id:'vouchers',label:'🎫 Vouchers',short:'🎫'},
   {id:'sales',label:'📋 Sales Log',short:'📋'},
+  {id:'reconcile',label:'🧾 Reconciliation',short:'🧾',adminOnly:true},
   {id:'expenses',label:'💸 Expenses',short:'💸'},
   {id:'assets',label:'🏭 Assets',short:'🏭'},
   {id:'guide',label:'📖 Guide',short:'📖'},
@@ -1411,6 +1454,7 @@ function navClick(id,btn){
   var pg=document.getElementById('page-'+id);
   if(pg)pg.classList.add('active');
   if(id==='entry')setEntryDateMax();
+  if(id==='reconcile')setTimeout(loadRecon,0);
   if(window.innerWidth<=900)closeSidebarDrawer();
   renderAll();
 }
@@ -1435,7 +1479,7 @@ function updateHeader(){
 
 function setDefaults(){
   var t=today();
-  ['e-date','v-date','r-date'].forEach(id=>{var el=document.getElementById(id);if(el){el.value=t;el.setAttribute('max',t);}});
+  ['e-date','v-date','r-date','rc-date'].forEach(id=>{var el=document.getElementById(id);if(el){el.value=t;el.setAttribute('max',t);}});
 }
 function setEntryDateMax(){
   var t=today();
@@ -2187,6 +2231,80 @@ async function doReconcile(){
   }catch(e){toast('Reconcile failed: '+e.message,'error');}
 }
 
+// ────────────────────────────────────────────────────────────────
+// DAILY CASH RECONCILIATION (admin) — cashier vs attendant/system
+// ────────────────────────────────────────────────────────────────
+let LAST_RECON=null;
+
+function calcReconVariance(){
+  var sys=LAST_RECON?Number(LAST_RECON.systemTotal)||0:0;
+  var cash=parseFloat((document.getElementById('rc-cash')||{}).value)||0;
+  var v=cash-sys;
+  var el=document.getElementById('rc-variance');
+  if(el){
+    el.textContent=(v===0? '0 UGX' : (fmt(Math.abs(v))+' UGX')) + (v>0?' (Over)':'') + (v<0?' (Short)':'');
+    el.style.color=v===0?'#1A7A3E':(v<0?'#C0392B':'#E67E22');
+  }
+}
+
+async function loadRecon(){
+  if(!(CURRENT_USER&&CURRENT_USER.permissions==='all')){toast('Admin only','error');return;}
+  var date=(document.getElementById('rc-date')||{}).value||today();
+  if(document.getElementById('rc-date'))document.getElementById('rc-date').value=date;
+  try{
+    var data=await GET('/reconciliations/'+date);
+    LAST_RECON=data;
+    var sys=Number(data.systemTotal)||0;
+    var sysEl=document.getElementById('rc-system');if(sysEl)sysEl.textContent=fmt(sys)+' UGX';
+    var cntEl=document.getElementById('rc-counts');if(cntEl)cntEl.textContent=`Entries: ${data.counts.totalEntries} | Pending: ${data.counts.pending} | Cleared: ${data.counts.cleared}`;
+
+    var rec=data.reconciliation||null;
+    if(rec){
+      if(document.getElementById('rc-cashier'))document.getElementById('rc-cashier').value=rec.cashierName||'';
+      if(document.getElementById('rc-book'))document.getElementById('rc-book').value=rec.cashierBookTotal||0;
+      if(document.getElementById('rc-cash'))document.getElementById('rc-cash').value=rec.cashAtHand||0;
+      if(document.getElementById('rc-notes'))document.getElementById('rc-notes').value=rec.notes||'';
+    }
+
+    var t=document.getElementById('rc-byatt');
+    if(t){
+      t.innerHTML='<thead><tr><th>Attendant</th><th>Total (UGX)</th></tr></thead><tbody>'+
+        (data.byAttendant||[]).map(r=>`<tr><td>${escAttr(r.attendant)}</td><td style="font-weight:700">${fmt(r.total||0)}</td></tr>`).join('')+
+        '</tbody>';
+    }
+    calcReconVariance();
+  }catch(e){toast('Reconciliation load failed: '+e.message,'error');}
+}
+
+async function saveRecon(){
+  if(!(CURRENT_USER&&CURRENT_USER.permissions==='all')){toast('Admin only','error');return;}
+  var date=(document.getElementById('rc-date')||{}).value;
+  if(!date){toast('Pick date','error');return;}
+  var cashierName=(document.getElementById('rc-cashier').value||'').trim();
+  var cashierBookTotal=parseFloat(document.getElementById('rc-book').value)||0;
+  var cashAtHand=parseFloat(document.getElementById('rc-cash').value)||0;
+  var notes=(document.getElementById('rc-notes').value||'').trim();
+  try{
+    await PUT('/reconciliations/'+date,{cashierName,cashierBookTotal,cashAtHand,notes});
+    toast('✅ Reconciliation saved');
+    await loadRecon();
+  }catch(e){toast('Save failed: '+e.message,'error');}
+}
+
+async function closeRecon(){
+  if(!(CURRENT_USER&&CURRENT_USER.permissions==='all')){toast('Admin only','error');return;}
+  var date=(document.getElementById('rc-date')||{}).value;
+  if(!date){toast('Pick date','error');return;}
+  if(!confirm('Close reconciliation for '+fmtD(date)+'?\nThis will mark ALL entries for that date as Cleared.'))return;
+  try{
+    await POST('/reconciliations/'+date+'/close',{});
+    toast('✅ Closed — entries cleared');
+    await loadAllData();
+    await loadRecon();
+    renderAll();
+  }catch(e){toast('Close failed: '+e.message,'error');}
+}
+
 function renderRecStatus(){
   var el=document.getElementById('rec-status');if(!el)return;
   var tot=VOUCHERS.length,sold=VOUCHERS.filter(v=>v.status==='Sold').length,unused=VOUCHERS.filter(v=>v.status==='Unused').length;
@@ -2429,9 +2547,23 @@ async function saveBiz(){
 // Users
 function renderUsers(){
   var el=document.getElementById('users-list');if(!el)return;
+  var cw=getWeek(today());
+  var byName={};
+  SALES.forEach(function(r){
+    var w=r.week||getWeek(r.date);
+    if(w!==cw)return;
+    var nm=(r.att||'').trim();
+    if(!nm)return;
+    byName[nm]=(byName[nm]||0)+(Number(r.totalRev)||(Number(r.wifi)||0)+(Number(r.charging)||0));
+  });
   el.innerHTML=USERS.map(u=>{
     var perms=Array.isArray(u.permissions)?u.permissions.length+' tabs access':u.permissions==='all'?'Full Admin':'Custom';
-    return `<div class="si"><div class="si-info"><div class="si-name">${u.name} <span class="badge ${u.permissions==='all'?'b-amber':'b-navy'}">${u.permissions==='all'?'Admin':u.role||'User'}</span>${u.active?'':' <span class="badge b-red">Inactive</span>'}</div><div class="si-detail">ID: ${u.id_number||'—'} | ${perms} | ${u.phone||'No phone'}</div></div><div class="si-actions"><button class="btn btn-sm btn-gray" onclick="openUserModal('${u.id}')">✏️ Edit</button><button class="btn btn-sm ${u.active?'btn-orange':'btn-green'}" onclick="toggleUser('${u.id}')">${u.active?'Deactivate':'Activate'}</button><button class="btn btn-sm btn-red" onclick="deleteUser('${u.id}')">🗑</button></div></div>`;
+    var tid=(u.id_number||u.id||'—');
+    var wt=Number(u.weekly_target)||0;
+    var wkTotal=byName[u.name]||0;
+    var pct=wt?Math.min(999,Math.round(wkTotal/wt*100)):0;
+    var prog=wt?(` | ${cw}: ${fmt(wkTotal)} UGX (${pct}%)`):'';
+    return `<div class="si"><div class="si-info"><div class="si-name">${u.name} <span class="badge ${u.permissions==='all'?'b-amber':'b-navy'}">${u.permissions==='all'?'Admin':u.role||'User'}</span>${u.active?'':' <span class="badge b-red">Inactive</span>'}</div><div class="si-detail">ID: ${tid} | Weekly target: ${wt?fmt(wt)+' UGX':'—'}${prog} | ${perms} | ${u.phone||'No phone'}</div></div><div class="si-actions"><button class="btn btn-sm btn-gray" onclick="openUserModal('${u.id}')">✏️ Edit</button><button class="btn btn-sm ${u.active?'btn-orange':'btn-green'}" onclick="toggleUser('${u.id}')">${u.active?'Deactivate':'Activate'}</button><button class="btn btn-sm btn-red" onclick="deleteUser('${u.id}')">🗑</button></div></div>`;
   }).join('');
 }
 
@@ -2440,9 +2572,15 @@ function openUserModal(editId){
   var perms=u?u.permissions:[];var isAdmin=perms==='all';
   var ALL_TABS2=[{id:'dashboard',label:'Dashboard'},{id:'entry',label:'Daily Entry'},{id:'vouchers',label:'Vouchers'},{id:'sales',label:'Sales Log'},{id:'expenses',label:'Expenses'},{id:'assets',label:'Assets'},{id:'guide',label:'Guide'}];
   var tabsHtml='<div class="perm-grid">'+ALL_TABS2.map(t=>`<label class="perm-item"><input type="checkbox" class="perm-chk" value="${t.id}"${(Array.isArray(perms)&&perms.includes(t.id))?' checked':''}/> ${t.label}</label>`).join('')+'</div>';
+  var wtarget=u?(u.weekly_target||0):0;
+  var cw=getWeek(today());
+  var wkTotal=SALES.filter(r=>(r.week||getWeek(r.date))===cw && (r.att||'')===((u&&u.name)||'')).reduce((a,r)=>a+(r.totalRev||(r.wifi||0)+(r.charging||0)),0);
+  var pct=wtarget?Math.min(999,Math.round(wkTotal/Number(wtarget||1)*100)):0;
   openModal((u?'Edit':'Add')+' User',`
-    <div class="r2"><div class="fg"><label>Full Name *</label><input type="text" id="mu-name" value="${u?u.name:''}" placeholder="Full name"/></div><div class="fg"><label>ID Number</label><input type="text" id="mu-idnum" value="${u?u.id_number||'':''}" placeholder="e.g. ATT-002"/></div></div>
+    <div class="r2"><div class="fg"><label>Full Name *</label><input type="text" id="mu-name" value="${u?u.name:''}" placeholder="Full name"/></div><div class="fg"><label>User ID (auto)</label><input type="text" id="mu-idnum" value="${u?(u.id_number||u.id||''):'Auto-generated on save'}" ${u?'':'readonly'} style="${u?'':'background:#F3F4F6;color:#6B7280'}"/></div></div>
     <div class="r2"><div class="fg"><label>Role / Title</label><input type="text" id="mu-role" value="${u?u.role||'':''}" placeholder="Attendant, Supervisor"/></div><div class="fg"><label>Phone</label><input type="text" id="mu-phone" value="${u?u.phone||'':''}" placeholder="+256..."/></div></div>
+    <div class="r2"><div class="fg"><label>Weekly sales target (UGX)</label><input type="number" id="mu-wtarget" value="${wtarget}" placeholder="0"/></div><div class="fg"><label>Average daily needed (UGX)</label><input type="text" id="mu-wavg" value="${fmt(Math.ceil((Number(wtarget)||0)/7))} UGX/day" readonly style="background:#F3F4F6;color:#6B7280"/></div></div>
+    <div class="alert alert-blue" style="margin-top:-4px">This week (${cw}) total: <strong>${fmt(wkTotal)} UGX</strong>${wtarget?` — progress: <strong>${pct}%</strong>`:''}</div>
     <div class="fg"><label>PIN (4 digits)</label><input type="password" id="mu-pin" maxlength="4" placeholder="****" style="letter-spacing:6px;font-size:20px"/><div class="fg hint" style="margin-top:4px">${u?'Leave blank to keep current PIN. Set new PIN to reset (e.g. recovery).':'Required for new user. Avoid 1234, 0000.'}</div></div>
     <div class="divider"><span>Access Permissions</span></div>
     <div class="fg"><label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:normal"><input type="checkbox" id="mu-admin" ${isAdmin?'checked':''} onchange="document.getElementById('mu-perm-wrap').style.display=this.checked?'none':'block'"/> Full Admin access (all tabs + Settings)</label></div>
@@ -2455,6 +2593,7 @@ async function saveUser(editId){
   var idNum=document.getElementById('mu-idnum').value;
   var role=document.getElementById('mu-role').value||'attendant';
   var phone=document.getElementById('mu-phone').value;
+  var weeklyTarget=parseFloat((document.getElementById('mu-wtarget')||{}).value)||0;
   var pin=document.getElementById('mu-pin').value;
   var isAdmin=document.getElementById('mu-admin').checked;
   var perms=isAdmin?'all':[...document.querySelectorAll('.perm-chk:checked')].map(c=>c.value);
@@ -2462,8 +2601,14 @@ async function saveUser(editId){
   if(!editId&&(!pin||pin.length!==4)){toast('New users need a 4-digit PIN','error');return;}
   if(pin&&pin.length!==4&&pin.length!==0){toast('PIN must be 4 digits','error');return;}
   try{
-    if(editId){await PUT('/users/'+editId,{name,idNumber:idNum,role,phone,pin:pin||undefined,permissions:perms});var u=USERS.find(x=>x.id===editId);if(u){u.name=name;u.id_number=idNum;u.role=role;u.phone=phone;u.permissions=perms;}}
-    else{var r=await POST('/users',{name,idNumber:idNum,role,phone,pin,permissions:perms});USERS.push({id:r.id,name,id_number:idNum,role,phone,permissions:perms,active:true});}
+    if(editId){
+      await PUT('/users/'+editId,{name,idNumber:idNum,role,phone,pin:pin||undefined,permissions:perms,weeklyTarget});
+      var u=USERS.find(x=>x.id===editId);
+      if(u){u.name=name;u.id_number=idNum;u.role=role;u.phone=phone;u.permissions=perms;u.weekly_target=weeklyTarget;}
+    }else{
+      var r=await POST('/users',{name,idNumber:idNum,role,phone,pin,permissions:perms,weeklyTarget});
+      USERS.push({id:r.id,name,id_number:r.id,role,phone,permissions:perms,weekly_target:weeklyTarget,active:true});
+    }
     closeModal();renderUsers();toast('✅ User saved');
   }catch(e){toast('Error: '+e.message,'error');}
 }
@@ -2804,6 +2949,8 @@ function renderGuide(){
     var codes=this.value.split(',').filter(c=>c.trim().length>0);
     document.getElementById('r-count').textContent=codes.length?codes.length+' codes entered':'';
   });
+  var rc=document.getElementById('rc-cash');
+  if(rc)rc.addEventListener('input',calcReconVariance);
 
   // Auto-login only if we have a token and we're not in first-run (no users) mode
   if(TOKEN){

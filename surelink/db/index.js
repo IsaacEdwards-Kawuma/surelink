@@ -146,6 +146,35 @@ async function ensureSchemaMigrations() {
       await run("ALTER TABLE expenses ADD COLUMN expense_kind TEXT DEFAULT 'OPEX'");
       console.log('[db] Migration applied: expenses.expense_kind');
     }
+
+    const hasWeeklyTarget = await get(
+      "SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'weekly_target'"
+    );
+    if (!hasWeeklyTarget) {
+      await run("ALTER TABLE users ADD COLUMN weekly_target NUMERIC DEFAULT 0");
+      console.log('[db] Migration applied: users.weekly_target');
+    }
+
+    const hasDailyRecon = await get(
+      "SELECT 1 AS ok FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'daily_reconciliations'"
+    );
+    if (!hasDailyRecon) {
+      await run(`
+        CREATE TABLE daily_reconciliations (
+          date TEXT PRIMARY KEY,
+          cashier_name TEXT DEFAULT '',
+          cashier_book_total NUMERIC DEFAULT 0,
+          cash_at_hand NUMERIC DEFAULT 0,
+          notes TEXT DEFAULT '',
+          status TEXT DEFAULT 'open',
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          reconciled_by TEXT DEFAULT '',
+          reconciled_at TEXT DEFAULT ''
+        )
+      `);
+      console.log('[db] Migration applied: daily_reconciliations table');
+    }
   } catch (e) {
     console.warn('[db] ensureSchemaMigrations:', e.message);
   }
