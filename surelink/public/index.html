@@ -51,8 +51,8 @@ img{max-width:100%;height:auto;}
 .nav-toggle-btn[aria-expanded="true"] .hamburger span:nth-child(1){transform:translateY(7px) rotate(45deg);}
 .nav-toggle-btn[aria-expanded="true"] .hamburger span:nth-child(2){opacity:0;}
 .nav-toggle-btn[aria-expanded="true"] .hamburger span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
-#nav{display:flex;flex:1;gap:2px;padding:0;overflow-x:auto;scrollbar-width:none;min-width:0;}
-#nav::-webkit-scrollbar{display:none;}
+#top-nav{display:flex;flex:1;gap:2px;padding:0;overflow-x:auto;scrollbar-width:none;min-width:0;}
+#top-nav::-webkit-scrollbar{display:none;}
 .nav-btn{padding:8px 13px;border:none;border-radius:7px 7px 0 0;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;transition:all .15s;background:rgba(255,255,255,.1);color:#fff;}
 .nav-btn.active{background:#C9A84C;color:#1E3A5F;}
 .nav-btn.admin-tab{background:rgba(201,168,76,.15);color:#C9A84C;}
@@ -62,8 +62,8 @@ img{max-width:100%;height:auto;}
   .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199;opacity:0;transition:opacity .25s ease;}
   .nav-backdrop.nav-backdrop-visible{display:block;opacity:1;}
   .nav-toggle-wrap{z-index:200;}
-  #nav{flex-basis:100%;order:10;max-height:0;overflow:hidden;opacity:0;visibility:hidden;transition:max-height .35s ease,opacity .25s ease,visibility .25s;flex-direction:column;gap:0;background:rgba(30,58,95,.98);border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);margin:0 -12px -8px;padding:0 12px 12px;}
-  .nav-toggle-wrap.nav-open #nav{max-height:80vh;opacity:1;visibility:visible;}
+  #top-nav{flex-basis:100%;order:10;max-height:0;overflow:hidden;opacity:0;visibility:hidden;transition:max-height .35s ease,opacity .25s ease,visibility .25s;flex-direction:column;gap:0;background:rgba(30,58,95,.98);border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);margin:0 -12px -8px;padding:0 12px 12px;}
+  .nav-toggle-wrap.nav-open #top-nav{max-height:80vh;opacity:1;visibility:visible;}
   .nav-toggle-wrap.nav-open .nav-btn{width:100%;text-align:left;padding:14px 16px;border-radius:8px;margin-bottom:2px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.08);}
   .nav-toggle-wrap.nav-open .nav-btn:last-child{border-bottom:none;margin-bottom:0;}
   .nav-toggle-wrap.nav-open .nav-btn:hover{background:rgba(255,255,255,.12);}
@@ -85,13 +85,13 @@ img{max-width:100%;height:auto;}
 #sidebar.sidebar-collapsed .nav-full{display:none;}
 #sidebar.sidebar-collapsed .nav-short{display:inline !important;}
 #sidebar.sidebar-collapsed .nav-btn{padding:12px 8px;justify-content:center;text-align:center;}
-#nav{display:flex;flex-direction:column;gap:4px;flex:1;overflow-y:auto;padding-right:2px;}
-#nav .nav-btn{width:100%;text-align:left;padding:11px 12px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;transition:background .15s,color .15s;background:rgba(255,255,255,.08);color:#fff;}
-#nav .nav-btn .nav-short{display:none;font-size:16px;}
-#nav .nav-btn:hover{background:rgba(255,255,255,.14);}
-#nav .nav-btn.active{background:#C9A84C;color:#1E3A5F;}
-#nav .nav-btn.admin-tab{background:rgba(201,168,76,.12);color:#C9A84C;}
-#nav .nav-btn.admin-tab.active{background:#C9A84C;color:#1E3A5F;}
+#sidebar-nav{display:flex;flex-direction:column;gap:4px;flex:1;overflow-y:auto;padding-right:2px;}
+#sidebar-nav .nav-btn{width:100%;text-align:left;padding:11px 12px;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;transition:background .15s,color .15s;background:rgba(255,255,255,.08);color:#fff;}
+#sidebar-nav .nav-btn .nav-short{display:none;font-size:16px;}
+#sidebar-nav .nav-btn:hover{background:rgba(255,255,255,.14);}
+#sidebar-nav .nav-btn.active{background:#C9A84C;color:#1E3A5F;}
+#sidebar-nav .nav-btn.admin-tab{background:rgba(201,168,76,.12);color:#C9A84C;}
+#sidebar-nav .nav-btn.admin-tab.active{background:#C9A84C;color:#1E3A5F;}
 #main-column{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg-page);}
 #header{display:none;flex-shrink:0;}
 #app-shell.app-visible #header{display:block;}
@@ -536,7 +536,7 @@ html[data-theme="dark"] #edit-mode-banner{background:rgba(201,168,76,.25);border
     <div class="sidebar-tools">
       <button type="button" class="sidebar-pin" id="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Expand sidebar">»</button>
     </div>
-    <nav id="nav" aria-label="Main navigation"></nav>
+    <nav id="sidebar-nav" aria-label="Main navigation"></nav>
   </aside>
   <div id="main-column">
   <div id="header">
@@ -1363,7 +1363,7 @@ var ALL_TABS=[
 ];
 
 function buildNav(){
-  document.getElementById('nav').innerHTML=ALL_TABS.filter(t=>{
+  document.getElementById('sidebar-nav').innerHTML=ALL_TABS.filter(t=>{
     if(t.adminOnly)return CURRENT_USER&&CURRENT_USER.permissions==='all';
     return canAccess(t.id);
   }).map(t=>`<button type="button" class="nav-btn${t.adminOnly?' admin-tab':''}" data-nav="${t.id}" onclick="navClick('${t.id}',this)" title="${t.label.replace(/"/g,'&quot;')}"><span class="nav-short">${t.short||t.label.charAt(0)}</span><span class="nav-full">${t.label}</span></button>`).join('');
@@ -1405,7 +1405,7 @@ function applySidebarPrefs(){
 }
 
 function navClick(id,btn){
-  document.querySelectorAll('#nav .nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('#sidebar-nav .nav-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   var pg=document.getElementById('page-'+id);
@@ -1419,7 +1419,7 @@ function navTo(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   var el=document.getElementById('page-'+id);
   if(el)el.classList.add('active');
-  document.querySelectorAll('#nav .nav-btn').forEach(b=>{
+  document.querySelectorAll('#sidebar-nav .nav-btn').forEach(b=>{
     b.classList.toggle('active',b.getAttribute('data-nav')===id);
   });
 }
@@ -1791,7 +1791,7 @@ function editEntry(idx){
     enteredBy:r.enteredBy||'?',enteredAt:r.enteredAt||'?'
   };
   navTo('entry');
-  document.querySelectorAll('#nav .nav-btn').forEach(b=>{
+  document.querySelectorAll('#sidebar-nav .nav-btn').forEach(b=>{
     b.classList.toggle('active',b.getAttribute('data-nav')==='entry');
   });
   document.getElementById('edit-mode-banner').style.display='block';
