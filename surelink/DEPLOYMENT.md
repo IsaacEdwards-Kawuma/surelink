@@ -198,6 +198,25 @@ So it only works when the page is served from the same origin as the API. For Ve
 
 ---
 
+## Vercel: redeploy not updating or build failing
+
+1. **Root Directory must be `surelink`**  
+   If the Git repo root is the monorepo (contains `render.yaml` + `surelink/`), set **Root Directory** in Vercel → Project → Settings → General to **`surelink`**. Deploying the repo root has no `public/` at the top level and will fail or serve the wrong tree.
+
+2. **Vercel auto-detects “Node” because of `package.json`**  
+   It may try to run `server.js` as serverless and fail, or ignore `public/`. This repo includes **`vercel.json`** with `framework: null`, `outputDirectory: public`, and a tiny build step so the deployment is **static files from `public/`** only. The API stays on Render.
+
+3. **Production branch**  
+   Under Git → check **Production Branch** is the branch you push to (e.g. `main`). Preview deployments use other branches.
+
+4. **Stale UI after a “successful” deploy**  
+   The service worker caches `index.html`. After a release we bump `CACHE_NAME` in `public/sw.js` so clients fetch the new shell. Hard refresh (Ctrl+F5) or clear site data if you still see an old version.
+
+5. **CORS**  
+   Set Render `ALLOWED_ORIGINS` to the **exact** Vercel URL (including `https://` and no trailing slash unless you use one consistently). Preview URLs like `https://surelink-git-main-xxx.vercel.app` are different from production — add each if you test previews.
+
+---
+
 # Quick reference
 
 **Render**
