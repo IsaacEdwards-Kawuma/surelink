@@ -851,7 +851,6 @@ html[data-theme="dark"] #edit-mode-banner{background:rgba(201,168,76,.25);border
   </div><!-- #main-column -->
 </div><!-- #app-shell -->
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // API LAYER — backend URL is set here (same app works on Render, Vercel, custom domain)
@@ -865,6 +864,36 @@ var API_BASE = 'https://surelink.onrender.com';
 var API = (window.location.hostname === 'surelink.onrender.com') ? '/api' : ((API_BASE || RENDER_APP_URL).replace(/\/+$/, '') + '/api');
 let TOKEN = localStorage.getItem('sl_token') || '';
 let CURRENT_USER = null;
+
+/** Chart.js loads only when the dashboard draws charts — avoids blocking login if CDN is slow. */
+var CHART_JS_PROMISE=null;
+function loadChartJs(){
+  if(typeof Chart!=='undefined')return Promise.resolve();
+  if(CHART_JS_PROMISE)return CHART_JS_PROMISE;
+  CHART_JS_PROMISE=new Promise(function(resolve,reject){
+    var s=document.createElement('script');
+    s.async=true;
+    s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+    s.onload=function(){resolve();};
+    s.onerror=function(){CHART_JS_PROMISE=null;reject(new Error('Chart.js failed to load'));};
+    document.head.appendChild(s);
+  });
+  return CHART_JS_PROMISE;
+}
+
+async function fetchWithTimeout(url, options, timeoutMs){
+  var ms=timeoutMs||28000;
+  var ctrl=new AbortController();
+  var id=setTimeout(function(){try{ctrl.abort();}catch(_){}},ms);
+  try{
+    return await fetch(url,Object.assign({},options||{},{signal:ctrl.signal}));
+  }catch(e){
+    if(e.name==='AbortError'||(e&&String(e.message||'').toLowerCase().indexOf('abort')>=0))throw new Error('Request timed out after '+Math.round(ms/1000)+'s. Check network or API URL: '+(API_BASE||'(same host)')+'.');
+    throw e;
+  }finally{
+    clearTimeout(id);
+  }
+}
 
 // Global data cache
 let SALES=[], VOUCHERS=[], EXPENSES=[], ASSETS=[], SETTINGS={
@@ -883,7 +912,7 @@ async function api(method, path, body) {
   };
   if (body) opts.body = JSON.stringify(body);
   var url = API + path;
-  const r = await fetch(url, opts);
+  const r = await fetchWithTimeout(url, opts, 30000);
   var data;
   try { data = await r.json(); } catch (_) {
     if (!r.ok) {
@@ -955,7 +984,7 @@ function modalBg(e){ if(e.target===document.getElementById('modal-overlay'))clos
 // ═══════════════════════════════════════════════════════════════════
 async function checkConn(){
   try{
-    var r = await fetch(API+'/health');
+    var r = await fetchWithTimeout(API+'/health',{method:'GET'},20000);
     if (!r.ok) throw new Error('Server returned ' + r.status);
     ['conn-dot','conn-dot2'].forEach(id=>{var el=document.getElementById(id);if(el)el.classList.remove('off');});
     ['conn-text','conn-text2'].forEach(id=>{var el=document.getElementById(id);if(el)el.textContent='Server connected';});
@@ -978,6 +1007,7 @@ async function checkFirstRun(){
   var retryBtn=document.getElementById('conn-retry');
   var connDot=document.getElementById('conn-dot');
   if(connEl)connEl.textContent='Connecting...';
+  var c2i=document.getElementById('conn-text2');if(c2i)c2i.textContent='Connecting...';
   if(retryBtn)retryBtn.style.display='none';
   try{
     var status=await GET('/auth/status');
@@ -1004,13 +1034,19 @@ async function checkFirstRun(){
       await loadLoginUsers();
       setTimeout(()=>document.getElementById('p0').focus(),200);
     }
+    if(status.firstRun){
+      if(connEl)connEl.textContent='Server connected';
+      var c2f=document.getElementById('conn-text2');if(c2f)c2f.textContent='Server connected';
+    }
   }catch(e){
     document.getElementById('login-panel').style.display='block';
     document.getElementById('register-panel').style.display='none';
     document.getElementById('forgot-pin-panel').style.display='none';
     pinKeypadHide();
     if(connDot)connDot.classList.add('off');
-    if(connEl)connEl.textContent='Cannot connect. Tap Retry.';
+    var msg='Cannot connect. Tap Retry.';
+    if(connEl)connEl.textContent=msg;
+    var c2=document.getElementById('conn-text2');if(c2)c2.textContent=msg;
     if(retryBtn)retryBtn.style.display='inline-block';
     document.getElementById('login-user').innerHTML='<option value="">— Not connected —</option>';
   }
@@ -1028,10 +1064,13 @@ async function loadLoginUsers(){
     }
     sel.innerHTML=users.map(u=>`<option value="${u.id}">${u.name}${u.id_number?' ['+u.id_number+']':''}</option>`).join('');
     if(connEl)connEl.textContent='Server connected';
+    var ct2=document.getElementById('conn-text2');if(ct2)ct2.textContent='Server connected';
     var retryBtn=document.getElementById('conn-retry');if(retryBtn)retryBtn.style.display='none';
   }catch(e){
     sel.innerHTML='<option value="">— Cannot load accounts —</option>';
-    if(connEl)connEl.textContent='Cannot reach server. Open the app from your Render URL (e.g. https://your-app.onrender.com) so the dropdown loads.';
+    var errMsg='Cannot reach server. Check API_BASE in index.html matches your backend URL, or open the app from the same host as the API.';
+    if(connEl)connEl.textContent=errMsg;
+    var ct2b=document.getElementById('conn-text2');if(ct2b)ct2b.textContent=errMsg;
   }
 }
 
@@ -1402,7 +1441,11 @@ function toggleTheme(){
   html.setAttribute('data-theme',next);
   localStorage.setItem('sl_theme',next);
   var btn=document.getElementById('theme-toggle');if(btn)btn.textContent=next==='dark'?'☀️':'🌙';
-  setTimeout(function(){if(typeof destroyDashCharts==='function'&&typeof renderDashCharts==='function'&&SALES&&SALES.length){destroyDashCharts();renderDashCharts();}},60);
+  setTimeout(function(){
+    if(typeof destroyDashCharts!=='function'||typeof renderDashCharts!=='function'||!SALES||!SALES.length)return;
+    destroyDashCharts();
+    loadChartJs().then(function(){renderDashCharts();}).catch(function(){});
+  },60);
 }
 function applyTheme(){
   var saved=localStorage.getItem('sl_theme')||'light';
@@ -1877,7 +1920,10 @@ function chartTextColor(){return document.documentElement.getAttribute('data-the
 function chartGridColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'rgba(255,255,255,.08)':'rgba(0,0,0,.06)';}
 function renderDashCharts(){
   destroyDashCharts();
-  if(typeof Chart==='undefined')return;
+  if(typeof Chart==='undefined'){
+    loadChartJs().then(function(){renderDashCharts();}).catch(function(){});
+    return;
+  }
   var c1=document.getElementById('chart-revenue-sources');
   var c2=document.getElementById('chart-weekly-bars');
   if(!c1||!c2)return;
@@ -1932,7 +1978,7 @@ function renderDash(){
     ['weekly-bars','vstock','recent-days'].forEach(function(id){var el=document.getElementById(id);if(el)el.innerHTML='<p style="color:#9CA3AF;font-size:11px;padding:8px">No data yet</p>';});
     document.getElementById('weekly-tbl').innerHTML='';return;
   }
-  setTimeout(function(){renderDashCharts();},0);
+  setTimeout(function(){loadChartJs().then(function(){renderDashCharts();}).catch(function(){});},0);
   var tr=SALES.reduce((a,r)=>a+(r.totalRev||(r.wifi||0)+(r.charging||0)),0);
   var tw=SALES.reduce((a,r)=>a+(r.wifi||0),0);
   var tc=SALES.reduce((a,r)=>a+(r.charging||0),0);
