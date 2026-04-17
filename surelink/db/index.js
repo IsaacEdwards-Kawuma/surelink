@@ -136,6 +136,21 @@ async function transaction(fn) {
   }
 }
 
+/** Apply lightweight migrations for existing DBs (no separate setup run required on deploy). */
+async function ensureSchemaMigrations() {
+  try {
+    const hasExpKind = await get(
+      "SELECT 1 AS ok FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'expenses' AND column_name = 'expense_kind'"
+    );
+    if (!hasExpKind) {
+      await run("ALTER TABLE expenses ADD COLUMN expense_kind TEXT DEFAULT 'OPEX'");
+      console.log('[db] Migration applied: expenses.expense_kind');
+    }
+  } catch (e) {
+    console.warn('[db] ensureSchemaMigrations:', e.message);
+  }
+}
+
 const db = {
   pool,
   query,
@@ -147,6 +162,7 @@ const db = {
   logAction,
   transaction,
   nextUserId,
+  ensureSchemaMigrations,
 };
 
 module.exports = db;

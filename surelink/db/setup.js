@@ -161,6 +161,13 @@ async function main() {
     console.log('   (sales columns migration skipped or already applied)');
   }
 
+  try {
+    const hasExpKind = await db.get("SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'expenses' AND column_name = 'expense_kind'");
+    if (!hasExpKind) await db.query("ALTER TABLE expenses ADD COLUMN expense_kind TEXT DEFAULT 'OPEX'");
+  } catch (e) {
+    console.log('   (expenses.expense_kind migration skipped or already applied)');
+  }
+
   const keys = ['business', 'revenue_sources', 'voucher_packages', 'fixed_costs', 'expense_categories', 'subscriptions'];
   const defaults = {
     business: { name: 'My WiFi Business', tagline: 'Fast. Reliable. Affordable.', owner: '', phone: '', addr: '', logo: '' },

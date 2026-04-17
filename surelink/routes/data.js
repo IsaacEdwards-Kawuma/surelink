@@ -73,17 +73,28 @@ router.get('/expenses', requireAuth, async (req, res) => {
   res.json(await db.all('SELECT * FROM expenses ORDER BY date ASC'));
 });
 
+function expenseKindFromBody(d) {
+  const k = (d.kind || d.expense_kind || '').toString().toUpperCase();
+  if (k === 'CAPEX' || k === 'OPEX') return k;
+  return 'OPEX';
+}
+
 router.post('/expenses', requireAuth, async (req, res) => {
   const d = req.body;
   const id = uid();
-  await db.run(`INSERT INTO expenses (id, date, date_display, description, category, subcategory, amount, entered_by, sale_id) VALUES (?,?,?,?,?,?,?,?,?)`,
-    id, d.date, d.dateDisp || '', d.desc, d.cat || '', d.sub || '', d.amt || 0, req.user.name, d.saleId || '');
+  const kind = expenseKindFromBody(d);
+  await db.run(`INSERT INTO expenses (id, date, date_display, description, category, subcategory, amount, entered_by, sale_id, expense_kind) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    id, d.date, d.dateDisp || '', d.desc, d.cat || '', d.sub || '', d.amt || 0, req.user.name, d.saleId || '', kind);
   res.status(201).json(await db.get('SELECT * FROM expenses WHERE id = ?', id));
 });
 
 router.put('/expenses/:id', requireAuth, requireAdmin, async (req, res) => {
   const d = req.body;
-  await db.run(`UPDATE expenses SET description=?, amount=?, category=?, subcategory=?, date_display=? WHERE id=?`, d.desc, d.amt, d.cat, d.sub, d.dateDisp, req.params.id);
+  if (d.kind != null || d.expense_kind != null) {
+    await db.run(`UPDATE expenses SET description=?, amount=?, category=?, subcategory=?, date_display=?, expense_kind=? WHERE id=?`, d.desc, d.amt, d.cat, d.sub, d.dateDisp, expenseKindFromBody(d), req.params.id);
+  } else {
+    await db.run(`UPDATE expenses SET description=?, amount=?, category=?, subcategory=?, date_display=? WHERE id=?`, d.desc, d.amt, d.cat, d.sub, d.dateDisp, req.params.id);
+  }
   await db.logAction(req.user.name, 'Expense Edited', d.desc, req.ip);
   res.json(await db.get('SELECT * FROM expenses WHERE id = ?', req.params.id));
 });
@@ -344,9 +355,9 @@ router.post('/backup/restore', requireAuth, requireAdmin, async (req, res) => {
       }
       for (const r of expenses) {
         await tx.run(
-          `INSERT INTO expenses (id, date, date_display, description, category, subcategory, amount, entered_by, sale_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          r.id, r.date || '', r.date_display || '', r.description || '', r.category || '', r.subcategory || '', r.amount ?? 0, r.entered_by || '', r.sale_id || ''
+          `INSERT INTO expenses (id, date, date_display, description, category, subcategory, amount, entered_by, sale_id, expense_kind)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          r.id, r.date || '', r.date_display || '', r.description || '', r.category || '', r.subcategory || '', r.amount ?? 0, r.entered_by || '', r.sale_id || '', r.expense_kind || 'OPEX'
         );
       }
       for (const r of assets) {

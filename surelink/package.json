@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "backup": "node backup/run-backup.js",
     "setup": "node db/setup.js",
-    "test": "node tests/test-api.js"
+    "test": "node tests/test-api.js",
+    "test:smoke": "node tests/test-api.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

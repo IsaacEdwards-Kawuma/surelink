@@ -98,11 +98,19 @@ cron.schedule('0 2 * * *', async () => {
 });
 
 // ── Start server ────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🚀 SureLink WiFi Manager running on port ${PORT}`);
-  console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Health:  http://localhost:${PORT}/api/health`);
-  console.log(`   Mode:    ${process.env.NODE_ENV || 'development'}\n`);
-});
+(async function start() {
+  try {
+    const db = require('./db');
+    await db.ensureSchemaMigrations();
+  } catch (e) {
+    console.warn('[startup] DB migration skipped:', e.message);
+  }
+  app.listen(PORT, () => {
+    console.log(`\n🚀 SureLink WiFi Manager running on port ${PORT}`);
+    console.log(`   Local:   http://localhost:${PORT}`);
+    console.log(`   Health:  http://localhost:${PORT}/api/health`);
+    console.log(`   Mode:    ${process.env.NODE_ENV || 'development'}\n`);
+  });
+})();
 
 module.exports = app;

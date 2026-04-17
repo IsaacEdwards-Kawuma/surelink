@@ -6,6 +6,61 @@ const { requireAuth, requireAdmin } = require('./auth');
 
 function uid() { return 'sl' + Date.now() + Math.random().toString(36).slice(2, 6); }
 
+/** Same week labels as the frontend (public/index.html getWeek). */
+function getWeekForDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const s = [
+    ['WK1', '2025-12-01'], ['WK2', '2025-12-08'], ['WK3', '2025-12-15'], ['WK4', '2025-12-22'],
+    ['WK5', '2026-01-26'], ['WK6', '2026-02-02'], ['WK7', '2026-02-09'], ['WK8', '2026-02-16'],
+    ['WK9', '2026-02-23'], ['WK10', '2026-03-02'], ['WK11', '2026-03-09'], ['WK12', '2026-03-16'],
+    ['WK13', '2026-03-23'], ['WK14', '2026-03-30'], ['WK15', '2026-04-06'], ['WK16', '2026-04-13'],
+    ['WK17', '2026-04-20'], ['WK18', '2026-04-27'], ['WK19', '2026-05-04'], ['WK20', '2026-05-11'],
+    ['WK21', '2026-05-18'], ['WK22', '2026-05-25'], ['WK23', '2026-06-01'], ['WK24', '2026-06-08']
+  ];
+  let w = 'WK?';
+  for (let i = 0; i < s.length; i++) {
+    if (d >= new Date(s[i][1] + 'T00:00:00')) w = s[i][0];
+    else break;
+  }
+  return w;
+}
+
+function addCalendarDays(dateStr, delta) {
+  const parts = dateStr.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2] + delta);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+async function nextEntryRefTx(tx, dateStr) {
+  const prefix = 'SL-' + (dateStr || '').replace(/-/g, '') + '-';
+  const row = await tx.get(
+    'SELECT entry_ref FROM sales WHERE entry_ref LIKE ? ORDER BY entry_ref DESC LIMIT 1',
+    prefix + '%'
+  );
+  if (!row || !row.entry_ref) return prefix + '001';
+  const num = parseInt(row.entry_ref.replace(prefix, ''), 10) || 0;
+  return prefix + String(num + 1).padStart(3, '0');
+}
+
+async function insertDowntimeGap(tx, dateStr, userName, enteredAt) {
+  const id = uid();
+  const entryRef = await nextEntryRefTx(tx, dateStr);
+  const week = getWeekForDate(dateStr);
+  await tx.run(
+    `INSERT INTO sales
+      (id, date, week, attendant, total_rev, wifi, charging, expenses,
+       exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data,
+       entered_by, entered_at, edit_history, transaction_status, entry_ref)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    id, dateStr, week, userName || '',
+    0, 0, 0, 0,
+    '', '', '',
+    'Auto-recorded: no entry (downtime day)', 1, '{}',
+    userName || '', enteredAt, '[]', 'cleared', entryRef
+  );
+  return id;
+}
+
 router.get('/', requireAuth, async (req, res) => {
   const rows = await db.all('SELECT * FROM sales ORDER BY date ASC');
   res.json(rows.map(parseSaleRow));
@@ -22,17 +77,6 @@ function todayStr() {
   return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
 }
 
-async function nextEntryRef(dateStr) {
-  const prefix = 'SL-' + (dateStr || '').replace(/-/g, '') + '-';
-  const row = await db.get(
-    "SELECT entry_ref FROM sales WHERE entry_ref LIKE ? ORDER BY entry_ref DESC LIMIT 1",
-    prefix + '%'
-  );
-  if (!row || !row.entry_ref) return prefix + '001';
-  const num = parseInt(row.entry_ref.replace(prefix, ''), 10) || 0;
-  return prefix + String(num + 1).padStart(3, '0');
-}
-
 router.post('/', requireAuth, async (req, res) => {
   const d = req.body;
   if (!d.date) return res.status(400).json({ error: 'Date required' });
@@ -42,27 +86,53 @@ router.post('/', requireAuth, async (req, res) => {
   const exists = await db.get('SELECT id FROM sales WHERE date = ?', d.date);
   if (exists) return res.status(409).json({ error: 'Entry for ' + d.date + ' already exists' });
 
-  const id = uid();
-  const entryRef = await nextEntryRef(d.date);
-  await db.run(`
-    INSERT INTO sales
-      (id, date, week, attendant, total_rev, wifi, charging, expenses,
-       exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data,
-       entered_by, entered_at, edit_history, transaction_status, entry_ref)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `,
-    id, d.date, d.week || '', d.att || '',
-    d.totalRev || 0, d.wifi || 0, d.charging || 0, d.expenses || 0,
-    d.expDesc || '', d.expCat || '', d.expSub || '',
-    d.notes || '', d.downtime ? 1 : 0,
-    JSON.stringify(d.revenueData || {}),
-    req.user.name, new Date().toLocaleString('en-GB'),
-    '[]', 'pending', entryRef
-  );
+  const totalRev = Number(d.totalRev) || 0;
+  const wifi = Number(d.wifi) || 0;
+  const charging = Number(d.charging) || 0;
+  const zeroRevenue = totalRev === 0 && wifi === 0 && charging === 0;
+  const downtimeVal = zeroRevenue ? 1 : (d.downtime ? 1 : 0);
+  const enteredAt = new Date().toLocaleString('en-GB');
+  const weekMain = d.week || getWeekForDate(d.date);
 
-  await db.logAction(req.user.name, 'Daily Entry', `Date: ${d.date} | Revenue: ${d.totalRev || 0} UGX`, req.ip);
+  let gapCount = 0;
+  let newId;
 
-  const created = parseSaleRow(await db.get('SELECT * FROM sales WHERE id = ?', id));
+  await db.transaction(async (tx) => {
+    const lastBefore = await tx.get('SELECT MAX(date) as d FROM sales WHERE date < ?', d.date);
+    if (lastBefore && lastBefore.d) {
+      let cursor = addCalendarDays(lastBefore.d, 1);
+      while (cursor < d.date) {
+        const taken = await tx.get('SELECT id FROM sales WHERE date = ?', cursor);
+        if (!taken) {
+          await insertDowntimeGap(tx, cursor, req.user.name, enteredAt);
+          gapCount++;
+        }
+        cursor = addCalendarDays(cursor, 1);
+      }
+    }
+
+    newId = uid();
+    const entryRef = await nextEntryRefTx(tx, d.date);
+    await tx.run(
+      `INSERT INTO sales
+        (id, date, week, attendant, total_rev, wifi, charging, expenses,
+         exp_desc, exp_cat, exp_sub, notes, downtime, revenue_data,
+         entered_by, entered_at, edit_history, transaction_status, entry_ref)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      newId, d.date, weekMain, d.att || '',
+      totalRev, wifi, charging, d.expenses || 0,
+      d.expDesc || '', d.expCat || '', d.expSub || '',
+      d.notes || '', downtimeVal,
+      JSON.stringify(d.revenueData || {}),
+      req.user.name, enteredAt,
+      '[]', 'pending', entryRef
+    );
+  });
+
+  const detail = `Date: ${d.date} | Revenue: ${totalRev} UGX` + (gapCount ? ` | Auto downtime days filled: ${gapCount}` : '');
+  await db.logAction(req.user.name, 'Daily Entry', detail, req.ip);
+
+  const created = parseSaleRow(await db.get('SELECT * FROM sales WHERE id = ?', newId));
   res.status(201).json(created);
 });
 
